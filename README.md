@@ -9,6 +9,7 @@ A Python utility for calculating production profits in Sim Companies using the S
   - Selling price (at specific quality levels).
   - 4% market exchange fee.
   - Production wages.
+  - Administrative Overhead costs.
   - Input material costs.
   - Transportation costs.
 - **Data Persistence**: Automatically saves fetched API data to `resources.json` and `vwaps.json` for inspection.
@@ -37,6 +38,7 @@ uv run main.py [options]
 - `-Q`, `--quality`: Specify the quality level to use for market prices (default: `0`).
 - `-S`, `--search`: Search for a specific resource by name (case-insensitive).
 - `-A`, `--abundance`: Specify the abundance percentage (0-100) for mine and well resources (default: `90`).
+- `-O`, `--admin-overhead`: Specify administration overhead percentage to add to wages (default: `0`).
 
 ### Examples
 
@@ -62,7 +64,7 @@ The tool displays a table with the following columns:
 - **Profit/hr**: Net profit per hour after all costs (including abundance adjustments and market fee).
 - **Revenue/hr**: Gross income per hour from sales.
 - **Fee/hr**: 4% market exchange fee.
-- **Costs/hr**: Combined cost of wages and input materials.
+- **Costs/hr**: Combined cost of wages (including admin overhead) and input materials.
 - **Transp/hr**: Total transportation costs.
 
 ### Warning Flags

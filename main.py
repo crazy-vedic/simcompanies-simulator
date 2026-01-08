@@ -74,6 +74,7 @@ def main():
     parser.add_argument("-Q", "--quality", type=int, default=0, help="Quality level to calculate for (default: 0)")
     parser.add_argument("-S", "--search", type=str, help="Search for a specific resource by name (case-insensitive)")
     parser.add_argument("-A", "--abundance", type=float, default=90, help="Abundance percentage for mine/well resources (default: 90)")
+    parser.add_argument("-O", "--admin-overhead", type=float, default=0, help="Administration overhead percentage to add to wages (default: 0)")
     args = parser.parse_args()
 
     # Load abundance resources
@@ -148,6 +149,11 @@ def main():
                 produced_per_hour *= (args.abundance / 100)
 
             wages = res.get("wages", 0)
+            
+            # Apply administration overhead to wages
+            admin_overhead = wages * (args.admin_overhead / 100)
+            total_wages = wages + admin_overhead
+
             inputs = res.get("inputs", {})
             transport_units_needed = res.get("transportation", 0)
             
@@ -180,15 +186,15 @@ def main():
             market_fee_per_hour = revenue_per_hour * 0.04
 
             # 5. Total profit per hour
-            # Profit = Revenue - Fee - Wages - Input Costs - Transport Costs
-            profit_per_hour = revenue_per_hour - market_fee_per_hour - wages - input_costs_per_hour - transport_costs_per_hour
+            # Profit = Revenue - Fee - Wages - Admin Overhead - Input Costs - Transport Costs
+            profit_per_hour = revenue_per_hour - market_fee_per_hour - total_wages - input_costs_per_hour - transport_costs_per_hour
             
             profits.append({
                 "name": name,
                 "profit_per_hour": profit_per_hour,
                 "revenue_per_hour": revenue_per_hour,
                 "market_fee_per_hour": market_fee_per_hour,
-                "costs_per_hour": wages + input_costs_per_hour,
+                "costs_per_hour": total_wages + input_costs_per_hour,
                 "transport_costs_per_hour": transport_costs_per_hour,
                 "missing_input_price": missing_input_price,
                 "is_abundance_res": is_abundance_res
@@ -199,7 +205,7 @@ def main():
 
         header_title = f"Top 30 Most Profitable Resources" if not args.search else f"Search results for '{args.search}'"
         print(f"\n{header_title} per Hour (Quality {args.quality} Only):")
-        print(f"Using Transport price: ${transport_price:.3f} | Market Fee: 4%")
+        print(f"Using Transport price: ${transport_price:.3f} | Market Fee: 4% | Admin Overhead: {args.admin_overhead}%")
         print("-" * 105)
         print(f"{'Resource':<25} | {'Profit/hr':>12} | {'Revenue/hr':>12} | {'Fee/hr':>10} | {'Costs/hr':>12} | {'Transp/hr':>10}")
         print("-" * 105)
