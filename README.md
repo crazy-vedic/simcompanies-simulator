@@ -38,7 +38,7 @@ uv run main.py [options]
 ### Options
 
 - `-Q`, `--quality`: Specify the quality level to use for market prices (default: `0`).
-- `-S`, `--search`: Search for a specific resource by name (case-insensitive).
+- `-S`, `--search`: Search for specific resources by name (case-insensitive). You can provide multiple terms (e.g., `-S power water`).
 - `-A`, `--abundance`: Specify the abundance percentage (0-100) for mine and well resources (default: `90`).
 - `-O`, `--admin-overhead`: Specify administration overhead percentage to add to wages (default: `0`).
 - `-C`, `--contract`: Calculate values for direct contracts (0% market fee, 50% transportation cost).
@@ -55,9 +55,9 @@ uv run main.py -A 85
 uv run main.py -Q 2
 ```
 
-**Search for "Electric" related resources at Quality 1:**
+**Search for "Electric" and "Water" related resources at Quality 1:**
 ```bash
-uv run main.py -S Electric -Q 1
+uv run main.py -S Electric Water -Q 1
 ```
 
 **Calculate direct contract profits (0% fee, 50% transport):**

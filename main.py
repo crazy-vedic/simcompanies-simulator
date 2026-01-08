@@ -77,7 +77,7 @@ def save_json(data, filename):
 def main():
     parser = argparse.ArgumentParser(description="Simcotools calculation script")
     parser.add_argument("-Q", "--quality", type=int, default=0, help="Quality level to calculate for (default: 0)")
-    parser.add_argument("-S", "--search", type=str, help="Search for a specific resource by name (case-insensitive)")
+    parser.add_argument("-S", "--search", type=str, nargs="+", help="Search for specific resources by name (case-insensitive)")
     parser.add_argument("-A", "--abundance", type=float, default=90, help="Abundance percentage for mine/well resources (default: 90)")
     parser.add_argument("-O", "--admin-overhead", type=float, default=0, help="Administration overhead percentage to add to wages (default: 0)")
     parser.add_argument("-C", "--contract", action="store_true", help="Calculate values for direct contracts (0% market fee, 50% transportation cost)")
@@ -143,8 +143,9 @@ def main():
             name = res.get("name")
             
             # Filter by search string if provided
-            if args.search and args.search.lower() not in name.lower():
-                continue
+            if args.search:
+                if not any(term.lower() in name.lower() for term in args.search):
+                    continue
 
             res_id = res.get("id")
             produced_per_hour = res.get("producedAnHour", 0)
@@ -212,7 +213,7 @@ def main():
         # Sort by profit per hour descending
         profits.sort(key=lambda x: x["profit_per_hour"], reverse=True)
 
-        header_title = f"Top 30 Most Profitable Resources" if not args.search else f"Search results for '{args.search}'"
+        header_title = f"Top 30 Most Profitable Resources" if not args.search else f"Search results for '{', '.join(args.search)}'"
         if args.contract:
             header_title += " (Direct Contract Mode)"
         
