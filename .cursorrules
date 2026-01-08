@@ -1,0 +1,6 @@
+# Project Rules
+
+- Always keep the `README.md` file up to date with any changes to the program's logic, command-line arguments, or general functionality.
+- If you add new dependencies, ensure they are reflected in the `README.md` installation section if applicable.
+- If the output format or warning flags change, update the "Output Explanation" section in `README.md`.
+

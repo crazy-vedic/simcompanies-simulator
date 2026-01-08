@@ -1,0 +1,25 @@
+# Python-generated files
+__pycache__/
+*.py[oc]
+build/
+dist/
+wheels/
+*.egg-info
+
+# Virtual environments
+.venv/
+venv/
+ENV/
+
+# Project-specific data files (API output)
+resources.json
+vwaps.json
+
+# IDEs
+.cursor/
+.vscode/
+.idea/
+
+# Environment and logs
+.env
+*.log
