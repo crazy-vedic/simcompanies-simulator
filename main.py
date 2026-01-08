@@ -185,7 +185,7 @@ def main():
                 input_costs_per_hour += (input_price * qty_per_unit) * produced_per_hour
 
             # 3. Transportation costs (per unit and per hour)
-            # Market fee is usually 3%, but transport is a direct cost to sell
+            # Market fee is usually 4%, but transport is a direct cost to sell
             transport_cost_per_unit = transport_units_needed * transport_price
             if args.contract:
                 transport_cost_per_unit *= 0.5
