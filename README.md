@@ -45,6 +45,7 @@ uv run main.py [options]
 - `-C`, `--contract`: Calculate values for direct contracts (0% market fee, 50% transportation cost).
 - `-R`, `--roi`: Calculate and display ROI for buildings based on their best performing resource (uses Q0 prices for construction costs).
 - `-D`, `--debug-unassigned`: List all resources that are not assigned to any building in `buildings.json`.
+- `-E`, `--exclude-seasonal`: Exclude seasonal resources from all calculations.
 
 ### Examples
 
@@ -71,6 +72,11 @@ uv run main.py -B Farm
 **Calculate direct contract profits (0% fee, 50% transport):**
 ```bash
 uv run main.py --contract
+```
+
+**Exclude seasonal resources from calculations:**
+```bash
+uv run main.py -E
 ```
 
 ## Output Explanation
@@ -102,5 +108,5 @@ If the `-R` or `--roi` flag is used, a second table is displayed showing:
 - `resources.json`: Contains raw metadata for all resources (wages, inputs, production rates).
 - `vwaps.json`: Contains the latest market Volume Weighted Average Prices for all resources and qualities.
 - `abundance_resources.json`: List of resources that use the abundance calculation.
+- `seasonal_resources.json`: List of resources that are considered seasonal and can be excluded.
 - `buildings.json`: Contains metadata for buildings, including construction costs and the resources they produce.
-

@@ -84,6 +84,7 @@ def main():
     parser.add_argument("-C", "--contract", action="store_true", help="Calculate values for direct contracts (0% market fee, 50% transportation cost)")
     parser.add_argument("-R", "--roi", action="store_true", help="Calculate and display ROI for buildings based on best performing resource")
     parser.add_argument("-D", "--debug-unassigned", action="store_true", help="List all resources that are not assigned to any building")
+    parser.add_argument("-E", "--exclude-seasonal", action="store_true", help="Exclude seasonal resources from calculations")
     args = parser.parse_args()
 
     # Load abundance resources
@@ -91,6 +92,12 @@ def main():
     if os.path.exists("abundance_resources.json"):
         with open("abundance_resources.json", "r") as f:
             abundance_resources = [res.lower() for res in json.load(f)]
+
+    # Load seasonal resources
+    seasonal_resources = []
+    if os.path.exists("seasonal_resources.json"):
+        with open("seasonal_resources.json", "r") as f:
+            seasonal_resources = [res.lower() for res in json.load(f)]
 
     # Load buildings
     buildings_data = []
@@ -174,6 +181,10 @@ def main():
             name = res.get("name", "")
             name_lower = name.lower()
             
+            # Filter seasonal resources if requested
+            if args.exclude_seasonal and name_lower in seasonal_resources:
+                continue
+
             # Filter by building if provided
             if args.building:
                 building_name = resource_to_building.get(name_lower)
