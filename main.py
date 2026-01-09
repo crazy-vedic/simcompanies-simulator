@@ -82,6 +82,7 @@ def main():
     parser.add_argument("-A", "--abundance", type=float, default=90, help="Abundance percentage for mine/well resources (default: 90)")
     parser.add_argument("-O", "--admin-overhead", type=float, default=0, help="Administration overhead percentage to add to wages (default: 0)")
     parser.add_argument("-C", "--contract", action="store_true", help="Calculate values for direct contracts (0% market fee, 50% transportation cost)")
+    parser.add_argument("-R", "--roi", action="store_true", help="Calculate and display ROI for buildings based on best performing resource")
     parser.add_argument("-D", "--debug-unassigned", action="store_true", help="List all resources that are not assigned to any building")
     args = parser.parse_args()
 
@@ -89,7 +90,7 @@ def main():
     abundance_resources = []
     if os.path.exists("abundance_resources.json"):
         with open("abundance_resources.json", "r") as f:
-            abundance_resources = json.load(f)
+            abundance_resources = [res.lower() for res in json.load(f)]
 
     # Load buildings
     buildings_data = []
@@ -99,7 +100,7 @@ def main():
             buildings_data = json.load(f)
             for b in buildings_data:
                 for res_name in b.get("produces", []):
-                    resource_to_building[res_name] = b["name"]
+                    resource_to_building[res_name.lower()] = b["name"]
 
     api = SimcoAPI(realm=0)
     
@@ -109,7 +110,7 @@ def main():
         resources = resources_data.get("resources", [])
 
         if args.debug_unassigned:
-            unassigned = [res.get("name") for res in resources if res.get("name") not in resource_to_building]
+            unassigned = [res.get("name") for res in resources if res.get("name", "").lower() not in resource_to_building]
             unassigned.sort()
             console.print("\n[bold red]Resources not assigned to any building:[/bold red]")
             for name in unassigned:
@@ -124,20 +125,28 @@ def main():
         
         # Build a price map: {resource_id: vwap} (Only for selected Quality)
         price_map = {}
+        q0_price_map = {} # For building costs
         if isinstance(vwaps_data, list):
             for entry in vwaps_data:
                 if isinstance(entry, dict):
                     r_id = entry.get("resourceId")
                     quality = entry.get("quality")
                     vwap = entry.get("vwap")
-                    if r_id is not None and vwap is not None and quality == args.quality:
-                        price_map[int(r_id)] = vwap
+                    if r_id is not None and vwap is not None:
+                        if quality == args.quality:
+                            price_map[int(r_id)] = vwap
+                        if quality == 0:
+                            q0_price_map[int(r_id)] = vwap
+        
+        # Map resource names to IDs for building cost lookup
+        name_to_id = {r.get("name", "").lower(): r.get("id") for r in resources_data.get("resources", [])}
         
         # Get Transport price for shipping costs
         # Find the resource ID for "Transport" first
         transport_id = None
         for res in resources_data.get("resources", []):
-            if res.get("name") == "Transport":
+            res_name_lower = res.get("name", "").lower()
+            if res_name_lower == "transport":
                 transport_id = res.get("id")
                 break
         
@@ -162,24 +171,25 @@ def main():
         resources = resources_data.get("resources", [])
         
         for res in resources:
-            name = res.get("name")
+            name = res.get("name", "")
+            name_lower = name.lower()
             
             # Filter by building if provided
             if args.building:
-                building_name = resource_to_building.get(name)
+                building_name = resource_to_building.get(name_lower)
                 if not building_name or not any(term.lower() in building_name.lower() for term in args.building):
                     continue
 
             # Filter by search string if provided
             if args.search:
-                if not any(term.lower() in name.lower() for term in args.search):
+                if not any(term.lower() in name_lower for term in args.search):
                     continue
 
             res_id = res.get("id")
             produced_per_hour = res.get("producedAnHour", 0)
             
             # Apply abundance if applicable
-            is_abundance_res = name in abundance_resources
+            is_abundance_res = name_lower in abundance_resources
             if is_abundance_res:
                 produced_per_hour *= (args.abundance / 100)
 
@@ -241,18 +251,6 @@ def main():
         # Sort by profit per hour descending
         profits.sort(key=lambda x: x["profit_per_hour"], reverse=True)
 
-        # Show building cost if filtering by building
-        if args.building and buildings_data:
-            for b_term in args.building:
-                for b in buildings_data:
-                    if b_term.lower() in b["name"].lower():
-                        cost_table = Table(title=f"Construction Cost: [bold cyan]{b['name']}[/bold cyan]", show_header=True, header_style="bold magenta", box=box.SIMPLE)
-                        cost_table.add_column("Resource")
-                        cost_table.add_column("Amount", justify="right")
-                        for cost_res, cost_amt in b.get("cost", {}).items():
-                            cost_table.add_row(cost_res, str(cost_amt))
-                        console.print(cost_table)
-
         header_title = "Top 30 Most Profitable Resources"
         if args.search or args.building:
             parts = []
@@ -299,6 +297,101 @@ def main():
             console.print(f"\n[bold yellow](*)[/bold yellow] indicates abundance-based resource (applied {args.abundance}% abundance)")
         if any(p["missing_input_price"] for p in profits[:display_count]):
             console.print(f"[bold red](!)[/bold red] indicates one or more source materials had no Quality {args.quality} market price")
+
+        # ROI Calculation
+        if args.roi and buildings_data:
+            roi_table = Table(title="Building ROI Analysis", show_header=True, header_style="bold green", box=box.ROUNDED)
+            roi_table.add_column("Building", style="bold white")
+            roi_table.add_column("Best Resource", style="cyan")
+            roi_table.add_column("Building Cost", justify="right", style="magenta")
+            roi_table.add_column("Daily Profit", justify="right", style="green")
+            roi_table.add_column("ROI (Daily)", justify="right", style="bold yellow")
+            roi_table.add_column("Break Even", justify="right", style="white")
+
+            # Create a map of resource name -> profit info for quick lookup (case-insensitive keys)
+            res_profit_map = {p["name"].lower(): p for p in profits}
+            
+            roi_data = []
+
+            for b in buildings_data:
+                b_name = b["name"]
+                
+                # Check if this building is relevant (has any resources in the current profits list)
+                produces = b.get("produces", [])
+                
+                best_res_profit = -float('inf')
+                best_res_name = None
+                
+                has_relevant_resource = False
+                for res_name in produces:
+                    res_name_lower = res_name.lower()
+                    if res_name_lower in res_profit_map:
+                        has_relevant_resource = True
+                        p_data = res_profit_map[res_name_lower]
+                        if p_data["profit_per_hour"] > best_res_profit:
+                            best_res_profit = p_data["profit_per_hour"]
+                            best_res_name = p_data["name"]
+                
+                if not has_relevant_resource:
+                    continue
+
+                # Calculate Building Cost (using Q0 prices)
+                total_cost = 0
+                cost_dict = b.get("cost", {})
+                missing_cost_price = False
+                for mat_name, amount in cost_dict.items():
+                    mat_id = name_to_id.get(mat_name.lower())
+                    if mat_id:
+                        price = q0_price_map.get(mat_id, 0)
+                        if price == 0:
+                            missing_cost_price = True
+                        total_cost += price * amount
+                    else:
+                        missing_cost_price = True
+                
+                daily_profit = best_res_profit * 24
+                
+                roi_daily = 0
+                days_break_even = float('inf')
+                
+                if total_cost > 0:
+                    roi_daily = (daily_profit / total_cost) * 100
+                    if daily_profit > 0:
+                        days_break_even = total_cost / daily_profit
+                
+                roi_data.append({
+                    "building": b_name,
+                    "resource": best_res_name,
+                    "cost": total_cost,
+                    "daily_profit": daily_profit,
+                    "roi": roi_daily,
+                    "break_even": days_break_even,
+                    "missing_cost": missing_cost_price
+                })
+
+            # Sort by ROI Descending
+            roi_data.sort(key=lambda x: x["roi"], reverse=True)
+            
+            for d in roi_data:
+                break_even_str = "∞" if d["break_even"] == float('inf') else f"{d['break_even']:.1f} days"
+                if d["daily_profit"] < 0:
+                     break_even_str = "Never"
+
+                warn = " (!)" if d["missing_cost"] else ""
+                
+                roi_table.add_row(
+                    d["building"],
+                    d["resource"],
+                    f"${d['cost']:,.0f}{warn}",
+                    f"${d['daily_profit']:,.0f}",
+                    f"{d['roi']:.2f}%",
+                    break_even_str
+                )
+            
+            console.print("\n")
+            console.print(roi_table)
+            if any(d["missing_cost"] for d in roi_data):
+                console.print("[yellow](!) Warning: Some building costs calculated with missing material prices (assumed $0).[/yellow]")
 
     except httpx.HTTPError as exc:
         console.print(f"[bold red]Error fetching data: {exc}[/bold red]")

@@ -210,5 +210,34 @@
     "produces": [
       "Power"
     ]
+  },
+  {
+    "name": "Oil rig",
+    "cost": {
+      "Bricks": 1100,
+      "Reinforced concrete": 80,
+      "Construction units": 20,
+      "Planks": 320
+    },
+    "produces": [
+      "Crude oil",
+      "Methane"
+    ]
+  },
+  {
+    "name": "Refinery",
+    "cost": {
+      "Bricks": 1100,
+      "Reinforced concrete": 80,
+      "Construction units": 20,
+      "Planks": 320
+    },
+    "produces": [
+      "Petrol",
+      "Diesel",
+      "Plastic",
+      "Carbon fibers",
+      "Rocket fuel"
+    ]
   }
 ]

@@ -39,10 +39,11 @@ uv run main.py [options]
 
 - `-Q`, `--quality`: Specify the quality level to use for market prices (default: `0`).
 - `-S`, `--search`: Search for specific resources by name (case-insensitive). You can provide multiple terms (e.g., `-S power water`).
-- `-B`, `--building`: Filter resources by building name. This also displays the construction costs for the matched building(s).
+- `-B`, `--building`: Filter resources by building name.
 - `-A`, `--abundance`: Specify the abundance percentage (0-100) for mine and well resources (default: `90`).
 - `-O`, `--admin-overhead`: Specify administration overhead percentage to add to wages (default: `0`).
 - `-C`, `--contract`: Calculate values for direct contracts (0% market fee, 50% transportation cost).
+- `-R`, `--roi`: Calculate and display ROI for buildings based on their best performing resource (uses Q0 prices for construction costs).
 - `-D`, `--debug-unassigned`: List all resources that are not assigned to any building in `buildings.json`.
 
 ### Examples
@@ -62,7 +63,7 @@ uv run main.py -Q 2
 uv run main.py -S Electric Water -Q 1
 ```
 
-**Filter by building (e.g., Farm) to see its costs and production profits:**
+**Filter by building (e.g., Farm) to see its production profits:**
 ```bash
 uv run main.py -B Farm
 ```
@@ -85,6 +86,16 @@ The tool displays a formatted table using `rich` with the following columns:
 ### Indicators & Warnings
 - **Yellow (*)**: Indicates abundance-based resource (e.g., Bauxite, Crude oil, etc.). The production rate is multiplied by the abundance percentage.
 - **Red (!)**: Indicates that one or more input materials for that resource do not have a market price at the specified quality level, which may result in inaccurate profit calculations.
+
+### ROI Analysis Table (when using --roi)
+If the `-R` or `--roi` flag is used, a second table is displayed showing:
+- **Building**: The name of the building.
+- **Best Resource**: The resource produced by that building which yields the highest hourly profit.
+- **Building Cost**: Total construction cost using current Q0 market prices.
+- **Daily Profit**: Estimated daily profit from producing the best resource (24 hours).
+- **ROI (Daily)**: Return on Investment per day as a percentage.
+- **Break Even**: Estimated number of days to recover the construction cost.
+
 
 ## Data Files
 
