@@ -448,5 +448,116 @@
       "Sub-orbital rocket",
       "BFR"
     ]
+  },
+  {
+    "name": "Software R&D",
+    "cost": {
+      "Bricks": 1045,
+      "Reinforced concrete": 76,
+      "Construction units": 19,
+      "Planks": 304
+    },
+    "produces": [
+      "Software"
+    ]
+  },
+  {
+    "name": "Fashion & Design",
+    "cost": {
+      "Bricks": 1155,
+      "Reinforced concrete": 84,
+      "Construction units": 21,
+      "Planks": 336
+    },
+    "produces": [
+      "Fashion research"
+    ]
+  },
+  {
+    "name": "Kitchen",
+    "cost": {
+      "Bricks": 1320,
+      "Reinforced concrete": 96,
+      "Construction units": 24,
+      "Planks": 384
+    },
+    "produces": [
+      "Recipes"
+    ]
+  },
+  {
+    "name": "Breeding laboratory",
+    "cost": {
+      "Bricks": 1540,
+      "Reinforced concrete": 112,
+      "Construction units": 28,
+      "Planks": 448
+    },
+    "produces": [
+      "Breeding research"
+    ]
+  },
+  {
+    "name": "Chemistry laboratory",
+    "cost": {
+      "Bricks": 1540,
+      "Reinforced concrete": 112,
+      "Construction units": 28,
+      "Planks": 448
+    },
+    "produces": [
+      "Chemistry research",
+      "Materials research"
+    ]
+  },
+  {
+    "name": "Plant research center",
+    "cost": {
+      "Bricks": 1650,
+      "Reinforced concrete": 120,
+      "Construction units": 30,
+      "Planks": 480
+    },
+    "produces": [
+      "Plant research"
+    ]
+  },
+  {
+    "name": "Launch pad",
+    "cost": {
+      "Bricks": 1980,
+      "Reinforced concrete": 144,
+      "Construction units": 36,
+      "Planks": 576
+    },
+    "produces": [
+      "Aerospace research"
+    ]
+  },
+  {
+    "name": "Automotive R&D",
+    "cost": {
+      "Bricks": 2200,
+      "Reinforced concrete": 160,
+      "Construction units": 40,
+      "Planks": 640
+    },
+    "produces": [
+      "Automotive research"
+    ]
+  },
+  {
+    "name": "Physics laboratory",
+    "cost": {
+      "Bricks": 2640,
+      "Reinforced concrete": 192,
+      "Construction units": 48,
+      "Planks": 768
+    },
+    "produces": [
+      "Energy research",
+      "Mining research",
+      "Electronics research"
+    ]
   }
 ]
