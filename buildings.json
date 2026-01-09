@@ -1,0 +1,26 @@
+[
+  {
+    "name": "Farm",
+    "cost": {
+      "Reinforced concrete": 8,
+      "Planks": 32,
+      "Bricks": 110,
+      "Construction units": 2
+    },
+    "produces": [
+      "Apples",
+      "Oranges",
+      "Grapes",
+      "Grain",
+      "Cotton",
+      "Seeds",
+      "Sugarcane",
+      "Wood",
+      "Coffee beans",
+      "Vegetables",
+      "Cocoa",
+      "Pumpkin"
+    ]
+  }
+]
+

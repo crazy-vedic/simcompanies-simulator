@@ -39,6 +39,7 @@ uv run main.py [options]
 
 - `-Q`, `--quality`: Specify the quality level to use for market prices (default: `0`).
 - `-S`, `--search`: Search for specific resources by name (case-insensitive). You can provide multiple terms (e.g., `-S power water`).
+- `-B`, `--building`: Filter resources by building name. This also displays the construction costs for the matched building(s).
 - `-A`, `--abundance`: Specify the abundance percentage (0-100) for mine and well resources (default: `90`).
 - `-O`, `--admin-overhead`: Specify administration overhead percentage to add to wages (default: `0`).
 - `-C`, `--contract`: Calculate values for direct contracts (0% market fee, 50% transportation cost).
@@ -58,6 +59,11 @@ uv run main.py -Q 2
 **Search for "Electric" and "Water" related resources at Quality 1:**
 ```bash
 uv run main.py -S Electric Water -Q 1
+```
+
+**Filter by building (e.g., Farm) to see its costs and production profits:**
+```bash
+uv run main.py -B Farm
 ```
 
 **Calculate direct contract profits (0% fee, 50% transport):**
@@ -84,4 +90,5 @@ The tool displays a formatted table using `rich` with the following columns:
 - `resources.json`: Contains raw metadata for all resources (wages, inputs, production rates).
 - `vwaps.json`: Contains the latest market Volume Weighted Average Prices for all resources and qualities.
 - `abundance_resources.json`: List of resources that use the abundance calculation.
+- `buildings.json`: Contains metadata for buildings, including construction costs and the resources they produce.
 

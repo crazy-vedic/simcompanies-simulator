@@ -78,6 +78,7 @@ def main():
     parser = argparse.ArgumentParser(description="Simcotools calculation script")
     parser.add_argument("-Q", "--quality", type=int, default=0, help="Quality level to calculate for (default: 0)")
     parser.add_argument("-S", "--search", type=str, nargs="+", help="Search for specific resources by name (case-insensitive)")
+    parser.add_argument("-B", "--building", type=str, nargs="+", help="Filter resources by building name")
     parser.add_argument("-A", "--abundance", type=float, default=90, help="Abundance percentage for mine/well resources (default: 90)")
     parser.add_argument("-O", "--admin-overhead", type=float, default=0, help="Administration overhead percentage to add to wages (default: 0)")
     parser.add_argument("-C", "--contract", action="store_true", help="Calculate values for direct contracts (0% market fee, 50% transportation cost)")
@@ -88,6 +89,16 @@ def main():
     if os.path.exists("abundance_resources.json"):
         with open("abundance_resources.json", "r") as f:
             abundance_resources = json.load(f)
+
+    # Load buildings
+    buildings_data = []
+    resource_to_building = {}
+    if os.path.exists("buildings.json"):
+        with open("buildings.json", "r") as f:
+            buildings_data = json.load(f)
+            for b in buildings_data:
+                for res_name in b.get("produces", []):
+                    resource_to_building[res_name] = b["name"]
 
     api = SimcoAPI(realm=0)
     
@@ -142,6 +153,12 @@ def main():
         for res in resources:
             name = res.get("name")
             
+            # Filter by building if provided
+            if args.building:
+                building_name = resource_to_building.get(name)
+                if not building_name or not any(term.lower() in building_name.lower() for term in args.building):
+                    continue
+
             # Filter by search string if provided
             if args.search:
                 if not any(term.lower() in name.lower() for term in args.search):
@@ -213,7 +230,27 @@ def main():
         # Sort by profit per hour descending
         profits.sort(key=lambda x: x["profit_per_hour"], reverse=True)
 
-        header_title = f"Top 30 Most Profitable Resources" if not args.search else f"Search results for '{', '.join(args.search)}'"
+        # Show building cost if filtering by building
+        if args.building and buildings_data:
+            for b_term in args.building:
+                for b in buildings_data:
+                    if b_term.lower() in b["name"].lower():
+                        cost_table = Table(title=f"Construction Cost: [bold cyan]{b['name']}[/bold cyan]", show_header=True, header_style="bold magenta", box=box.SIMPLE)
+                        cost_table.add_column("Resource")
+                        cost_table.add_column("Amount", justify="right")
+                        for cost_res, cost_amt in b.get("cost", {}).items():
+                            cost_table.add_row(cost_res, str(cost_amt))
+                        console.print(cost_table)
+
+        header_title = "Top 30 Most Profitable Resources"
+        if args.search or args.building:
+            parts = []
+            if args.search:
+                parts.append(f"search: '{', '.join(args.search)}'")
+            if args.building:
+                parts.append(f"building: '{', '.join(args.building)}'")
+            header_title = f"Results for {' & '.join(parts)}"
+        
         if args.contract:
             header_title += " (Direct Contract Mode)"
         
