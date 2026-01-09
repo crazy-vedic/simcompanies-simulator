@@ -43,6 +43,7 @@ uv run main.py [options]
 - `-A`, `--abundance`: Specify the abundance percentage (0-100) for mine and well resources (default: `90`).
 - `-O`, `--admin-overhead`: Specify administration overhead percentage to add to wages (default: `0`).
 - `-C`, `--contract`: Calculate values for direct contracts (0% market fee, 50% transportation cost).
+- `-D`, `--debug-unassigned`: List all resources that are not assigned to any building in `buildings.json`.
 
 ### Examples
 

@@ -82,6 +82,7 @@ def main():
     parser.add_argument("-A", "--abundance", type=float, default=90, help="Abundance percentage for mine/well resources (default: 90)")
     parser.add_argument("-O", "--admin-overhead", type=float, default=0, help="Administration overhead percentage to add to wages (default: 0)")
     parser.add_argument("-C", "--contract", action="store_true", help="Calculate values for direct contracts (0% market fee, 50% transportation cost)")
+    parser.add_argument("-D", "--debug-unassigned", action="store_true", help="List all resources that are not assigned to any building")
     args = parser.parse_args()
 
     # Load abundance resources
@@ -105,6 +106,16 @@ def main():
     try:
         # Fetch resources and VWAPs
         resources_data = api.get_resources()
+        resources = resources_data.get("resources", [])
+
+        if args.debug_unassigned:
+            unassigned = [res.get("name") for res in resources if res.get("name") not in resource_to_building]
+            unassigned.sort()
+            console.print("\n[bold red]Resources not assigned to any building:[/bold red]")
+            for name in unassigned:
+                console.print(f" - {name}")
+            return
+
         vwaps_data = api.get_market_vwaps()
 
         # Save the API output

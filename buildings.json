@@ -21,6 +21,194 @@
       "Cocoa",
       "Pumpkin"
     ]
+  },
+  {
+    "name": "Ranch",
+    "cost": {
+      "Bricks": 165,
+      "Reinforced concrete": 12,
+      "Construction units": 3,
+      "Planks": 48
+    },
+    "produces": [
+      "Eggs",
+      "Leather",
+      "Cows",
+      "Pigs",
+      "Milk"
+    ]
+  },
+  {
+    "name": "Slaughterhouse",
+    "cost": {
+      "Bricks": 330,
+      "Reinforced concrete": 24,
+      "Construction units": 6,
+      "Planks": 96
+    },
+    "produces": [
+      "Steak",
+      "Sausages"
+    ]
+  },
+  {
+    "name": "Mill",
+    "cost": {
+      "Bricks": 440,
+      "Reinforced concrete": 32,
+      "Construction units": 8,
+      "Planks": 128
+    },
+    "produces": [
+      "Coffee Powder",
+      "Flour",
+      "Fodder"
+    ]
+  },
+  {
+    "name": "Beverage factory",
+    "cost": {
+      "Bricks": 220,
+      "Reinforced concrete": 16,
+      "Construction units": 4,
+      "Planks": 64
+    },
+    "produces": [
+      "Ethanol",
+      "Orange Juice",
+      "Apple Cider",
+      "Ginger Beer"
+    ]
+  },
+  {
+    "name": "Food processing plant",
+    "cost": {
+      "Bricks": 1375,
+      "Reinforced concrete": 100,
+      "Construction units": 25,
+      "Planks": 400
+    },
+    "produces": [
+      "Cheese",
+      "Frozen Pizza",
+      "Pasta",
+      "Butter",
+      "Sugar",
+      "Chocolate",
+      "Vegetable Oil",
+      "Easter Bunny",
+      "Ramadan Sweets",
+      "Chocolate Icecream",
+      "Apple Icecream"
+    ]
+  },
+  {
+    "name": "Bakery",
+    "cost": {
+      "Bricks": 605,
+      "Reinforced concrete": 44,
+      "Construction units": 11,
+      "Planks": 176
+    },
+    "produces": [
+      "Bread",
+      "Apple Pie",
+      "Dough"
+    ]
+  },
+  {
+    "name": "Catering",
+    "cost": {
+      "Bricks": 1650,
+      "Reinforced concrete": 120,
+      "Construction units": 30,
+      "Planks": 480
+    },
+    "produces": [
+      "Hamburger",
+      "Lasagna",
+      "Meat balls",
+      "Cocktails",
+      "Sauce",
+      "Salad",
+      "Samosa",
+      "Pumpkin Soup"
+    ]
+  },
+  {
+    "name": "Concrete plant",
+    "cost": {
+      "Bricks": 935,
+      "Reinforced concrete": 68,
+      "Construction units": 17,
+      "Planks": 272
+    },
+    "produces": [
+      "Reinforced concrete",
+      "Bricks",
+      "Cement"
+    ]
+  },
+  {
+    "name": "Construction factory",
+    "cost": {
+      "Bricks": 1155,
+      "Reinforced concrete": 84,
+      "Construction units": 21,
+      "Planks": 336
+    },
+    "produces": [
+      "Steel Beams",
+      "Planks",
+      "Windows",
+      "Tools"
+    ]
+  },
+  {
+    "name": "Quarry",
+    "cost": {
+      "Bricks": 385,
+      "Reinforced concrete": 28,
+      "Construction units": 7,
+      "Planks": 112
+    },
+    "produces": [
+      "Sand",
+      "Clay",
+      "Limestone"
+    ]
+  },
+  {
+    "name": "Fashion factory",
+    "cost": {
+      "Bricks": 220,
+      "Reinforced concrete": 16,
+      "Construction units": 4,
+      "Planks": 64
+    },
+    "produces": [
+      "Fabric",
+      "Underwear",
+      "Gloves",
+      "Dress",
+      "Stiletto Heel",
+      "Handbags",
+      "Sneakers",
+      "Luxury Watch",
+      "Necklace",
+      "Witch Costume"
+    ]
+  },
+  {
+    "name": "Power plant",
+    "cost": {
+      "Bricks": 825,
+      "Reinforced concrete": 60,
+      "Construction units": 15,
+      "Planks": 240
+    },
+    "produces": [
+      "Power"
+    ]
   }
 ]
-
