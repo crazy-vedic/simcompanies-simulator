@@ -2,6 +2,8 @@ import httpx
 import json
 import argparse
 import os
+import random
+import math
 from rich.console import Console
 from rich.table import Table
 from rich.progress import Progress, SpinnerColumn, TextColumn
@@ -74,6 +76,77 @@ def save_json(data, filename):
         json.dump(data, f, indent=2)
     console.log(f"Data saved to [cyan]{filename}[/cyan]")
 
+def simulate_prospecting(target_abundance, attempt_time, slots=1):
+    """
+    Simulates prospecting based on the Gaussian roll formula.
+    Formula: min(1.0, max(0.1, random.gauss(mu=0.6, sigma=0.15)))
+    """
+    mu = 0.6
+    sigma = 0.15
+    
+    # We want to find the probability P(X >= target_abundance)
+    # The distribution is a truncated/clamped Gaussian.
+    # For target_abundance <= 0.1, probability is 1.0.
+    # For target_abundance > 1.0, probability is 0.0.
+    
+    if target_abundance <= 0.1:
+        p_success_single = 1.0
+    elif target_abundance > 1.0:
+        p_success_single = 0.0
+    else:
+        # P(X >= target) where X ~ N(mu, sigma)
+        # P(X >= target) = 1 - P(X < target) = 1 - Phi((target - mu) / sigma)
+        # where Phi is the CDF of standard normal distribution.
+        z = (target_abundance - mu) / sigma
+        p_success_single = 1.0 - (0.5 * (1.0 + math.erf(z / math.sqrt(2.0))))
+        
+    if p_success_single <= 0:
+        console.print(f"[bold red]Target abundance {target_abundance*100:.1f}% is impossible with the current distribution.[/bold red]")
+        return
+
+    # Probability of at least one success in a block of 'slots' attempts
+    p_success_block = 1.0 - (1.0 - p_success_single)**slots
+
+    expected_blocks = 1.0 / p_success_block
+    expected_time = expected_blocks * attempt_time
+
+    # Use a fixed width for both tables to make them look uniform
+    table_width = 60
+
+    table = Table(title="Prospecting Simulation Results", show_header=True, header_style="bold magenta", box=box.ROUNDED, width=table_width)
+    table.add_column("Statistic", style="cyan")
+    table.add_column("Value", justify="right", style="green")
+
+    table.add_row("Target Abundance", f"{target_abundance*100:.1f}%")
+    table.add_row("Build Time per Attempt", f"{attempt_time:.1f} hours")
+    table.add_row("Number of Slots", f"{slots}")
+    table.add_row("Prob. Success (Single)", f"{p_success_single*100:.4f}%")
+    table.add_row("Prob. Success (Block)", f"{p_success_block*100:.4f}%")
+    table.add_row("Expected Blocks", f"{expected_blocks:.2f}")
+    table.add_row("Expected Time", f"{expected_time:.2f} hours ({expected_time/24:.2f} days)")
+
+    console.print(table)
+
+    # Confidence Intervals
+    # The number of blocks until success follows a Geometric distribution.
+    # P(Success within n blocks) = 1 - (1 - p_block)^n
+    # Solving for n: n = log(1 - confidence) / log(1 - p_block)
+    
+    conf_table = Table(title="Confidence Intervals (Time to Success)", show_header=True, header_style="bold blue", box=box.ROUNDED, width=table_width)
+    conf_table.add_column("Confidence Level", style="cyan")
+    conf_table.add_column("Required Blocks", justify="right", style="yellow")
+    conf_table.add_column("Required Time", justify="right", style="green")
+
+    if p_success_block < 1.0:
+        for conf in [0.50, 0.80, 0.90, 0.95, 0.99]:
+            n_blocks = math.ceil(math.log(1.0 - conf) / math.log(1.0 - p_success_block))
+            n_time = n_blocks * attempt_time
+            conf_table.add_row(f"{conf*100:.0f}%", f"{n_blocks}", f"{n_time:.1f}h ({n_time/24:.1f}d)")
+    else:
+        conf_table.add_row("100%", "1", f"{attempt_time:.1f}h")
+
+    console.print(conf_table)
+
 def main():
     parser = argparse.ArgumentParser(description="Simcotools calculation script")
     parser.add_argument("-Q", "--quality", type=int, default=0, help="Quality level to calculate for (default: 0)")
@@ -85,7 +158,14 @@ def main():
     parser.add_argument("-R", "--roi", action="store_true", help="Calculate and display ROI for buildings based on best performing resource")
     parser.add_argument("-D", "--debug-unassigned", action="store_true", help="List all resources that are not assigned to any building")
     parser.add_argument("-E", "--exclude-seasonal", action="store_true", help="Exclude seasonal resources from calculations")
+    parser.add_argument("-P", "--prospect", action="store_true", help="Simulate prospecting to find target abundance")
+    parser.add_argument("-T", "--time", type=float, default=12, help="Time in hours for one build attempt (default: 12)")
+    parser.add_argument("-L", "--slots", type=int, default=1, help="Number of simultaneous building slots (default: 1)")
     args = parser.parse_args()
+
+    if args.prospect:
+        simulate_prospecting(args.abundance / 100, args.time, args.slots)
+        return
 
     # Load abundance resources
     abundance_resources = []

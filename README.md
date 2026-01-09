@@ -16,6 +16,7 @@ A Python utility for calculating production profits in Sim Companies using the S
 - **Data Persistence**: Automatically saves fetched API data to `resources.json` and `vwaps.json` for inspection.
 - **Search & Filter**: Search for specific resources or filter calculations by a target quality level.
 - **Direct Contract Mode**: Support for calculating profits when trading directly with other players.
+- **Prospecting Simulation**: Simulate the probability and expected time/attempts to reach a target abundance level in mines/wells using a Gaussian distribution.
 
 ## Installation
 
@@ -46,6 +47,9 @@ uv run main.py [options]
 - `-R`, `--roi`: Calculate and display ROI for buildings based on their best performing resource (uses Q0 prices for construction costs).
 - `-D`, `--debug-unassigned`: List all resources that are not assigned to any building in `buildings.json`.
 - `-E`, `--exclude-seasonal`: Exclude seasonal resources from all calculations.
+- `-P`, `--prospect`: Enable prospecting simulation mode.
+- `-T`, `--time`: Time in hours for one build attempt (default: 12). Uses the abundance set by `-A` as the target.
+- `-L`, `--slots`: Number of simultaneous building slots (default: 1).
 
 ### Examples
 
@@ -79,6 +83,16 @@ uv run main.py --contract
 uv run main.py -E
 ```
 
+**Simulate prospecting for 95% abundance with 12h build time:**
+```bash
+uv run main.py --prospect -A 95 -T 12
+```
+
+**Simulate prospecting with 3 parallel slots:**
+```bash
+uv run main.py --prospect -A 98 -T 12 -L 3
+```
+
 ## Output Explanation
 
 The tool displays a formatted table using `rich` with the following columns:
@@ -102,6 +116,16 @@ If the `-R` or `--roi` flag is used, a second table is displayed showing:
 - **ROI (Daily)**: Return on Investment per day as a percentage.
 - **Break Even**: Estimated number of days to recover the construction cost.
 
+
+### Prospecting Simulation Tables (when using --prospect)
+When using the `-P` or `--prospect` flag, the tool displays:
+- **Prospecting Simulation Results**:
+    - **Target Abundance**: The percentage you are aiming for.
+    - **Probability of Success**: The chance of hitting the target in a single attempt.
+    - **Expected Attempts**: The average number of attempts needed (1/p).
+    - **Expected Time**: The average time required to hit the target.
+- **Confidence Intervals (Time to Success)**:
+    - Shows the number of attempts and total time required to be X% sure (50%, 80%, 90%, 95%, 99%) of having found the target abundance.
 
 ## Data Files
 
