@@ -239,5 +239,214 @@
       "Carbon fibers",
       "Rocket fuel"
     ]
+  },
+  {
+    "name": "Electronics factory",
+    "cost": {
+      "Bricks": 1320,
+      "Reinforced concrete": 96,
+      "Construction units": 24,
+      "Planks": 384
+    },
+    "produces": [
+      "Processors",
+      "Electronic Components",
+      "Batteries",
+      "Displays",
+      "Smart Phones",
+      "Tablets",
+      "Laptops",
+      "Monitors",
+      "Televisions",
+      "On-board Computer",
+      "High Grade E-Comps",
+      "Robots",
+      "Jack O'Lantern"
+    ]
+  },
+  {
+    "name": "Car factory",
+    "cost": {
+      "Bricks": 1485,
+      "Reinforced concrete": 108,
+      "Construction units": 27,
+      "Planks": 432
+    },
+    "produces": [
+      "Luxury Car Interior",
+      "Basic Interior",
+      "Car Body",
+      "Economy E-Car",
+      "Luxury E-Car",
+      "Economy Car",
+      "Luxury Car",
+      "Truck",
+      "Bulldozer"
+    ]
+  },
+  {
+    "name": "Aerospace factory",
+    "cost": {
+      "Bricks": 1705,
+      "Reinforced concrete": 124,
+      "Construction units": 31,
+      "Planks": 496
+    },
+    "produces": [
+      "Fuselage",
+      "Wing",
+      "Propellant Tank",
+      "Heat Shield",
+      "Sub-orbital 2nd Stage",
+      "Orbital Booster",
+      "Starship"
+    ]
+  },
+  {
+    "name": "Propulsion factory",
+    "cost": {
+      "Bricks": 1650,
+      "Reinforced concrete": 120,
+      "Construction units": 30,
+      "Planks": 480
+    },
+    "produces": [
+      "Electric Motor",
+      "Combustion Engine",
+      "Solid Fuel Booster",
+      "Rocket Engine",
+      "Ion Drive",
+      "Jet Engine"
+    ]
+  },
+  {
+    "name": "Hangar",
+    "cost": {
+      "Bricks": 1595,
+      "Reinforced concrete": 116,
+      "Construction units": 29,
+      "Planks": 464
+    },
+    "produces": [
+      "Jumbo Jet",
+      "Luxury Jet",
+      "Single Engine Plane"
+    ]
+  },
+  {
+    "name": "Aerospace electronics",
+    "cost": {
+      "Bricks": 2255,
+      "Reinforced concrete": 164,
+      "Construction units": 41,
+      "Planks": 656
+    },
+    "produces": [
+      "Flight computer",
+      "Cockpit",
+      "Attitude control",
+      "Quadcopter",
+      "Satellite"
+    ]
+  },
+  {
+    "name": "Water reservoir",
+    "cost": {
+      "Bricks": 330,
+      "Reinforced concrete": 24,
+      "Construction units": 6,
+      "Planks": 96
+    },
+    "produces": [
+      "Water"
+    ]
+  },
+  {
+    "name": "Shipping depot",
+    "cost": {
+      "Bricks": 825,
+      "Reinforced concrete": 60,
+      "Construction units": 15,
+      "Planks": 240
+    },
+    "produces": [
+      "Transport"
+    ]
+  },
+  {
+    "name": "Refinery",
+    "cost": {
+      "Bricks": 1100,
+      "Reinforced concrete": 80,
+      "Construction units": 20,
+      "Planks": 320
+    },
+    "produces": [
+      "Petrol",
+      "Diesel",
+      "Plastic",
+      "Carbon fibers",
+      "Rocket fuel"
+    ]
+  },
+  {
+    "name": "Mine",
+    "cost": {
+      "Bricks": 385,
+      "Reinforced concrete": 28,
+      "Construction units": 7,
+      "Planks": 112
+    },
+    "produces": [
+      "Minerals",
+      "Bauxite",
+      "Iron Ore",
+      "Gold Ore"
+    ]
+  },
+  {
+    "name": "Factory",
+    "cost": {
+      "Bricks": 770,
+      "Reinforced concrete": 56,
+      "Construction units": 14,
+      "Planks": 224
+    },
+    "produces": [
+      "Silicon",
+      "Chemicals",
+      "Aluminium",
+      "Steel",
+      "Glass",
+      "Xmas Crackers",
+      "Golden Bars",
+      "Carbon Composite",
+      "Xmas Ornament"
+    ]
+  },
+  {
+    "name": "General contractor",
+    "cost": {
+      "Bricks": 770,
+      "Reinforced concrete": 56,
+      "Construction units": 14,
+      "Planks": 224
+    },
+    "produces": [
+      "Construction units"
+    ]
+  },
+  {
+    "name": "Vertical integration facility",
+    "cost": {
+      "Bricks": 1815,
+      "Reinforced concrete": 132,
+      "Construction units": 33,
+      "Planks": 528
+    },
+    "produces": [
+      "Sub-orbital rocket",
+      "BFR"
+    ]
   }
 ]
