@@ -17,6 +17,7 @@ A Python utility for calculating production profits in Sim Companies using the S
 - **Search & Filter**: Search for specific resources or filter calculations by a target quality level.
 - **Direct Contract Mode**: Support for calculating profits when trading directly with other players.
 - **Prospecting Simulation**: Simulate the probability and expected time/attempts to reach a target abundance level in mines/wells using a Gaussian distribution.
+- **Lifecycle ROI Analysis**: Calculate the optimal building level for abundance resources by simulating production from start abundance down to 85%, accounting for build time and scrapping losses (100% recovery for Lv 1-2, 50% for Lv 3+).
 
 ## Project Structure
 
@@ -71,13 +72,15 @@ uv run main.py [options]
 - `-C`, `--contract`: Calculate values for direct contracts (0% market fee, 50% transportation cost).
 - `--robots`: Apply 3% wage reduction for buildings with robots installed.
 - `-R`, `--roi`: Calculate and display ROI for buildings based on their best performing resource (uses Q0 prices for construction costs).
+- `--lifecycle`: Enable lifecycle ROI analysis for abundance resources. This simulates production from a starting abundance (set by `-A`) down to 85%, including build time and scrapping losses.
 - `-D`, `--debug-unassigned`: List all resources that are not assigned to any building in `buildings.json`.
 - `-E`, `--exclude-seasonal`: Exclude seasonal resources from all calculations.
 - `-P`, `--prospect`: Enable prospecting simulation mode.
 - `-T`, `--time`: Time in hours for one build attempt (default: 12). Uses the abundance set by `-A` as the target.
 - `-L`, `--slots`: Number of simultaneous building slots (default: 1).
-- `--max-level`: Maximum building level for ROI analysis (default: 20). Used when filtering by building with `--roi`.
+- `--max-level`: Maximum building level for ROI analysis (default: 20). Used when filtering by building with `--roi` or with `--lifecycle`.
 - `--step-roi`: Calculate ROI based on individual upgrade steps ($L \to L+1$) rather than cumulative investment. Shows ROI for the *additional* profit gained from that specific upgrade.
+- `--build-time`: Base construction time in hours (Level 1) for lifecycle analysis. Build time for level $L$ is calculated as $(\sum_{k=1}^{L} k) \times \text{base}$. Abundance decays during this time.
 
 ### Examples
 
@@ -121,6 +124,11 @@ uv run main.py --prospect -A 95 -T 12
 uv run main.py --prospect -A 98 -T 12 -L 3
 ```
 
+**Find the optimal building level for a Mine starting at 95% abundance:**
+```bash
+uv run main.py --lifecycle -A 95 -B Mine --build-time 2
+```
+
 ## Output Explanation
 
 The tool displays a formatted table using `rich` with the following columns:
@@ -143,6 +151,18 @@ If the `-R` or `--roi` flag is used, a second table is displayed showing:
 - **Daily Profit**: Estimated daily profit from producing the best resource (24 hours).
 - **ROI (Daily)**: Return on Investment per day as a percentage.
 - **Break Even**: Estimated number of days to recover the construction cost.
+
+### Lifecycle Analysis Table (when using --lifecycle)
+
+Displays a simulation of the building's entire useful life from starting abundance down to 85%:
+- **Resource**: The resource being produced.
+- **Level**: Building level being simulated.
+- **Build(h)**: Total time spent on construction and upgrades (hours). Abundance decays during this period.
+- **Prod Days**: Total days of active production until abundance hits 85%.
+- **Investment**: Total cash spent on construction and upgrades.
+- **Unrecoverable**: The net loss on building materials when scrapping (50% loss for Level 3+).
+- **Ops Profit**: Total profit from production over the building's life.
+- **Net Profit**: `Ops Profit - Unrecoverable`. This is the primary metric for choosing the best upgrade level.
 
 **Level-based ROI Analysis (when using --roi and --building):**
 If the `-B` or `--building` flag is used along with `-R`, the ROI analysis will show levels from 1 up to `--max-level` (default 20) for the filtered building. This helps visualize how profit and investment scale as the building is leveled up.

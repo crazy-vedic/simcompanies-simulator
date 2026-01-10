@@ -16,6 +16,7 @@ from simtools.calculator import (
     calculate_all_profits,
     calculate_building_roi,
     calculate_level_roi,
+    calculate_lifecycle_roi,
     simulate_prospecting,
 )
 from simtools.models.building import Building, build_resource_to_building_map
@@ -273,6 +274,50 @@ def display_roi_table(roi_data: list[dict]) -> None:
         )
 
 
+def display_lifecycle_table(results: list[dict], start_abundance: float) -> None:
+    """Display lifecycle ROI analysis table.
+
+    Args:
+        results: List of lifecycle result dictionaries.
+        start_abundance: Starting abundance percentage.
+    """
+    table = Table(
+        title=f"Lifecycle Analysis (Abundance {start_abundance}% -> 85%)",
+        show_header=True,
+        header_style="bold cyan",
+        box=box.ROUNDED,
+    )
+    table.add_column("Resource", style="bold white")
+    table.add_column("Level", justify="right", style="cyan")
+    table.add_column("Build(h)", justify="right", style="blue")
+    table.add_column("Prod Days", justify="right", style="white")
+    table.add_column("Investment", justify="right", style="magenta")
+    table.add_column("Unrecoverable", justify="right", style="red")
+    table.add_column("Ops Profit", justify="right", style="green")
+    table.add_column("Net Profit", justify="right", style="bold yellow")
+    
+    # Show top 30
+    for res in results[:30]:
+        warn = " (!)" if res["missing_cost"] else ""
+        table.add_row(
+            res["resource"],
+            str(res["level"]),
+            f"{res['build_time_hours']:.1f}",
+            str(res["days"]),
+            f"${res['investment']:,.0f}{warn}",
+            f"${res['unrecoverable']:,.0f}",
+            f"${res['operational_profit']:,.0f}",
+            f"${res['net_profit']:,.0f}",
+        )
+        
+    console.print("\n")
+    console.print(table)
+    if any(r["missing_cost"] for r in results):
+        console.print(
+            "[yellow](!) Warning: Some costs/profits calculated with missing prices.[/yellow]"
+        )
+
+
 def parse_args() -> argparse.Namespace:
     """Parse command-line arguments.
 
@@ -325,6 +370,11 @@ def parse_args() -> argparse.Namespace:
         help="Calculate and display ROI for buildings based on best performing resource",
     )
     parser.add_argument(
+        "--lifecycle",
+        action="store_true",
+        help="Calculate lifecycle ROI for abundance resources (decays to 85%)",
+    )
+    parser.add_argument(
         "-D",
         "--debug-unassigned",
         action="store_true",
@@ -366,6 +416,12 @@ def parse_args() -> argparse.Namespace:
         "--step-roi",
         action="store_true",
         help="Calculate ROI based on individual upgrade steps rather than cumulative investment",
+    )
+    parser.add_argument(
+        "--build-time",
+        type=float,
+        default=0.0,
+        help="Base construction time in hours (Lv 1) for lifecycle analysis",
     )
     return parser.parse_args()
 
@@ -514,6 +570,40 @@ def main() -> None:
 
         profits = calculate_all_profits(filtered_resources, price_map, transport_price, config)
 
+        if args.lifecycle:
+            # Lifecycle Analysis
+            abundance_res_objects = [r for r in filtered_resources if r.is_abundance]
+            
+            lifecycle_results = []
+            for res in abundance_res_objects:
+                # Find the building
+                if not res.building_name:
+                    continue
+                # We need the building object
+                building = next((b for b in buildings if b.name == res.building_name), None)
+                if not building:
+                    continue
+
+                res_results = calculate_lifecycle_roi(
+                    building=building,
+                    resource=res,
+                    profit_config=config,
+                    current_prices=price_map,
+                    q0_prices=q0_price_map,
+                    transport_price=transport_price,
+                    name_to_id=name_to_id,
+                    start_abundance=args.abundance / 100.0,
+                    max_level=args.max_level,
+                    base_build_time=args.build_time,
+                )
+                lifecycle_results.extend(res_results)
+            
+            # Sort by Net Profit
+            lifecycle_results.sort(key=lambda x: x["net_profit"], reverse=True)
+            
+            display_lifecycle_table(lifecycle_results, args.abundance)
+            return
+
         # Display results
         if not (args.roi and args.building):
             display_profits_table(
@@ -560,4 +650,3 @@ def main() -> None:
 
 if __name__ == "__main__":
     main()
-

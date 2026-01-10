@@ -214,6 +214,144 @@ def calculate_level_roi(
     return level_roi_data
 
 
+def calculate_lifecycle_roi(
+    building: Building,
+    resource: Resource,
+    profit_config: ProfitConfig,
+    current_prices: dict[int, float],
+    q0_prices: dict[int, float],
+    transport_price: float,
+    name_to_id: dict[str, int],
+    start_abundance: float,
+    end_abundance: float = 0.85,
+    decay_rate: float = 0.00032,
+    max_level: int = 20,
+    base_build_time: float = 0.0,
+) -> list[dict]:
+    """Calculate lifecycle ROI simulating decay from start_abundance to end_abundance.
+
+    Accounts for:
+      - Build time delay (abundance decays during construction/upgrades).
+      - Daily profit decay as abundance drops.
+      - Scrapping returns: 100% of cost for L1-L2, 50% for L3+.
+      - Net Profit = Sum(Daily Profits) - Unrecoverable Cost.
+
+    Args:
+        building: Building instance.
+        resource: Resource instance.
+        profit_config: ProfitConfig for parameters like overhead, robots.
+        current_prices: Price map for revenue and inputs.
+        q0_prices: Price map for construction costs.
+        transport_price: Price per transport unit.
+        name_to_id: Resource name to ID map.
+        start_abundance: Starting abundance (0.0 to 1.0).
+        end_abundance: Ending abundance target (default 0.85).
+        decay_rate: Daily abundance decay rate (default 0.00032).
+        max_level: Max level to simulate.
+        base_build_time: Base construction time in hours (Lv 1).
+
+    Returns:
+        List of result dictionaries sorted by net profit.
+    """
+    if start_abundance <= end_abundance:
+        return []
+
+    # Calculate base profit metrics at 100% abundance and 0%
+    selling_price = current_prices.get(resource.id, 0)
+    p_100 = resource.calculate_profit(
+        selling_price=selling_price,
+        input_prices=current_prices,
+        transport_price=transport_price,
+        abundance=100.0,
+        admin_overhead=profit_config.admin_overhead,
+        is_contract=profit_config.is_contract,
+        has_robots=profit_config.has_robots,
+    )
+    p_0 = resource.calculate_profit(
+        selling_price=selling_price,
+        input_prices=current_prices,
+        transport_price=transport_price,
+        abundance=0.0,
+        admin_overhead=profit_config.admin_overhead,
+        is_contract=profit_config.is_contract,
+        has_robots=profit_config.has_robots,
+    )
+    
+    hourly_fixed_cost = -p_0["profit_per_hour"]  # Wages
+    hourly_variable_profit_at_100 = p_100["profit_per_hour"] + hourly_fixed_cost
+    
+    # Base construction cost (Level 1)
+    base_cost, missing_cost = building.calculate_construction_cost(q0_prices, name_to_id)
+    
+    results = []
+    
+    for level in range(1, max_level + 1):
+        # Calculate total investment
+        if level == 1:
+            total_investment = base_cost
+        else:
+            upgrade_steps_cost = (level * (level - 1) // 2) * base_cost
+            total_investment = base_cost + upgrade_steps_cost
+            
+        # Calculate recoverable cost
+        cost_l2 = 2 * base_cost 
+        if level <= 2:
+            recoverable = total_investment
+        else:
+            recoverable = cost_l2 + (total_investment - cost_l2) * 0.5
+        unrecoverable_cost = total_investment - recoverable
+        
+        # Calculate Build Time & Abundance Decay during build
+        # Time(L) = base_time (L1) + sum_{k=1}^{L-1} k*base_time
+        if level == 1:
+            total_build_time = base_build_time
+        else:
+            upgrade_steps_time = (level * (level - 1) // 2) * base_build_time
+            total_build_time = base_build_time + upgrade_steps_time
+            
+        build_days = total_build_time / 24.0
+        
+        # Effective starting abundance after build time
+        effective_start_abundance = start_abundance * ((1.0 - decay_rate) ** build_days)
+        
+        # If abundance dropped below target during build, skipped
+        if effective_start_abundance <= end_abundance:
+            continue
+            
+        # Calculate days to reach end_abundance from effective start
+        if decay_rate > 0:
+            total_days = math.log(end_abundance / effective_start_abundance) / math.log(1.0 - decay_rate)
+        else:
+            total_days = float("inf")
+            
+        num_days = int(total_days)
+        
+        # Sum of abundance fractions over the lifecycle
+        abundance_sum_fraction = effective_start_abundance * (1.0 - (1.0 - decay_rate) ** num_days) / decay_rate
+        
+        # Operational Profit
+        total_variable = hourly_variable_profit_at_100 * abundance_sum_fraction
+        total_fixed = hourly_fixed_cost * num_days
+        total_operational_profit = level * 24 * (total_variable - total_fixed)
+        
+        net_profit = total_operational_profit - unrecoverable_cost
+        
+        results.append({
+            "level": level,
+            "days": num_days,
+            "build_time_hours": total_build_time,
+            "investment": total_investment,
+            "unrecoverable": unrecoverable_cost,
+            "operational_profit": total_operational_profit,
+            "net_profit": net_profit,
+            "resource": resource.name,
+            "missing_cost": missing_cost or p_100["missing_input_price"]
+        })
+        
+    results.sort(key=lambda x: x["net_profit"], reverse=True)
+    return results
+
+
 def simulate_prospecting(
     target_abundance: float,
     attempt_time: float,
@@ -301,4 +439,3 @@ def simulate_prospecting(
         "days_to_85": days_to_85,
         "confidence_intervals": confidence_intervals,
     }
-
