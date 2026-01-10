@@ -59,75 +59,137 @@ This project uses [uv](https://github.com/astral-sh/uv) for dependency managemen
 Run the script using `uv run` or directly with `python` if dependencies are installed.
 
 ```bash
-uv run main.py [options]
+uv run main.py [command] [options]
 ```
 
-### Options
+### Commands
 
-- `-Q`, `--quality`: Specify the quality level to use for market prices (default: `0`).
-- `-S`, `--search`: Search for specific resources by name (case-insensitive). You can provide multiple terms (e.g., `-S power water`).
-- `-B`, `--building`: Filter resources by building name.
-- `-A`, `--abundance`: Specify the abundance percentage (0-100) for mine and well resources (default: `90`).
-- `-O`, `--admin-overhead`: Specify administration overhead percentage to add to wages (default: `0`).
-- `-C`, `--contract`: Calculate values for direct contracts (0% market fee, 50% transportation cost).
-- `--robots`: Apply 3% wage reduction for buildings with robots installed.
-- `-R`, `--roi`: Calculate and display ROI for buildings based on their best performing resource (uses Q0 prices for construction costs).
-- `--lifecycle`: Enable lifecycle ROI analysis for abundance resources. This simulates production from a starting abundance (set by `-A`) down to 85%, including build time and scrapping losses.
-- `-D`, `--debug-unassigned`: List all resources that are not assigned to any building in `buildings.json`.
-- `-E`, `--exclude-seasonal`: Exclude seasonal resources from all calculations.
-- `-P`, `--prospect`: Enable prospecting simulation mode.
-- `-T`, `--time`: Time in hours for one build attempt (default: 12). Uses the abundance set by `-A` as the target.
-- `-L`, `--slots`: Number of simultaneous building slots (default: 1).
-- `--max-level`: Maximum building level for ROI analysis (default: 20). Used when filtering by building with `--roi` or with `--lifecycle`.
-- `--step-roi`: Calculate ROI based on individual upgrade steps ($L \to L+1$) rather than cumulative investment. Shows ROI for the *additional* profit gained from that specific upgrade.
-- `--build-time`: Base construction time in hours (Level 1) for lifecycle analysis. Build time for level $L$ is calculated as $(\sum_{k=1}^{L} k) \times \text{base}$. Abundance decays during this time.
+Simtools uses a subcommand structure for better organization:
+
+#### `profit` - Calculate production profits (default)
+Calculate and display production profits for resources.
+
+**Options:**
+- `-q`, `--quality`: Quality level (default: 0)
+- `-a`, `--abundance`: Abundance percentage for mine/well resources (default: 90)
+- `-b`, `--building`: Filter by building name
+- `-s`, `--search`: Search resources by name (case-insensitive)
+- `-c`, `--contract`: Direct contract mode (0% market fee, 50% transport)
+- `-r`, `--robots`: Apply 3% wage reduction
+- `-o`, `--overhead`: Admin overhead percentage (default: 0)
+- `-e`, `--no-seasonal`: Exclude seasonal resources
+
+#### `roi` - Building ROI analysis
+Analyze return on investment for buildings based on their best performing resource.
+
+**Options:**
+- `-b`, `--building`: Filter by building name
+- `-l`, `--level`: Maximum building level (default: 20)
+- `-p`, `--per-step`: Calculate per-upgrade-step ROI
+- Plus common options: `-q`, `-a`, `-c`, `-r`, `-o`
+
+#### `lifecycle` - Abundance decay/lifecycle analysis
+Calculate lifecycle ROI for abundance resources (simulates decay from starting abundance to 85%).
+
+**Options:**
+- `-b`, `--building`: Filter by building name
+- `-l`, `--level`: Maximum building level (default: 20)
+- `-t`, `--time`: Base build time in hours
+- Plus common options: `-q`, `-a`, `-c`, `-r`, `-o`
+
+#### `prospect` - Prospecting simulation
+Simulate prospecting to find target abundance.
+
+**Options:**
+- `-t`, `--target`: Target abundance percentage (required)
+- `-d`, `--duration`: Build time per attempt in hours (default: 12)
+- `-s`, `--slots`: Number of building slots (default: 1)
+
+#### `debug` - Debugging utilities
+Various debugging and diagnostic tools.
+
+**Options:**
+- `-u`, `--unassigned`: List resources not assigned to any building
 
 ### Examples
 
 **View top 30 most profitable quality 0 resources with 85% abundance:**
 ```bash
-uv run main.py -A 85
+uv run main.py profit -a 85
+# or without subcommand (defaults to profit):
+uv run main.py -a 85
 ```
 
 **Calculate profits for Quality 2 resources:**
 ```bash
-uv run main.py -Q 2
+uv run main.py profit -q 2
 ```
 
 **Search for "Electric" and "Water" related resources at Quality 1:**
 ```bash
-uv run main.py -S Electric Water -Q 1
+uv run main.py profit -s Electric Water -q 1
 ```
 
 **Filter by building (e.g., Farm) to see its production profits:**
 ```bash
-uv run main.py -B Farm
+uv run main.py profit -b Farm
 ```
 
 **Calculate direct contract profits (0% fee, 50% transport):**
 ```bash
-uv run main.py --contract
+uv run main.py profit -c
+# or with building filter:
+uv run main.py profit -b Farm -c
 ```
 
 **Exclude seasonal resources from calculations:**
 ```bash
-uv run main.py -E
+uv run main.py profit -e
+```
+
+**Building ROI analysis:**
+```bash
+# ROI for all buildings
+uv run main.py roi
+
+# ROI for specific building
+uv run main.py roi -b Farm
+
+# ROI with level-by-level breakdown
+uv run main.py roi -b Mine -l 15 --per-step
 ```
 
 **Simulate prospecting for 95% abundance with 12h build time:**
 ```bash
-uv run main.py --prospect -A 95 -T 12
+uv run main.py prospect -t 95 -d 12
 ```
 
 **Simulate prospecting with 3 parallel slots:**
 ```bash
-uv run main.py --prospect -A 98 -T 12 -L 3
+uv run main.py prospect -t 98 -d 12 -s 3
 ```
 
 **Find the optimal building level for a Mine starting at 95% abundance:**
 ```bash
-uv run main.py --lifecycle -A 95 -B Mine --build-time 2
+uv run main.py lifecycle -a 95 -b Mine -t 2
 ```
+
+**Debug: List unassigned resources:**
+```bash
+uv run main.py debug -u
+```
+
+### Backwards Compatibility
+
+For ease of migration, the tool supports running without specifying a subcommand. When no subcommand is provided, it defaults to the `profit` command. Additionally, common flags (`-q`, `-a`, `-c`, `-r`, `-o`, `-b`, `-s`, `-e`) are available at the top level for backwards compatibility:
+
+```bash
+# These are equivalent:
+uv run main.py -a 85
+uv run main.py profit -a 85
+```
+
+However, using the explicit subcommand structure is recommended for clarity and to access all command-specific options.
 
 ## Output Explanation
 

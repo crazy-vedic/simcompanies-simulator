@@ -319,111 +319,233 @@ def display_lifecycle_table(results: list[dict], start_abundance: float) -> None
 
 
 def parse_args() -> argparse.Namespace:
-    """Parse command-line arguments.
+    """Parse command-line arguments using subcommands.
 
     Returns:
         Parsed arguments namespace.
     """
-    parser = argparse.ArgumentParser(description="Simcotools calculation script")
+    # Create parent parser for common arguments
+    parent_parser = argparse.ArgumentParser(add_help=False)
+    parent_parser.add_argument(
+        "-q", "--quality", type=int, default=0, help="Quality level (default: 0)"
+    )
+    parent_parser.add_argument(
+        "-a",
+        "--abundance",
+        type=float,
+        default=90,
+        help="Abundance percentage for mine/well resources (default: 90)",
+    )
+    parent_parser.add_argument(
+        "-c",
+        "--contract",
+        action="store_true",
+        help="Direct contract mode (0%% market fee, 50%% transport)",
+    )
+    parent_parser.add_argument(
+        "-r",
+        "--robots",
+        action="store_true",
+        help="Apply 3%% wage reduction",
+    )
+    parent_parser.add_argument(
+        "-o",
+        "--overhead",
+        type=float,
+        default=0,
+        dest="admin_overhead",
+        help="Admin overhead percentage (default: 0)",
+    )
+
+    # Main parser
+    parser = argparse.ArgumentParser(
+        description="Simtools - Sim Companies calculation toolkit",
+        formatter_class=argparse.RawDescriptionHelpFormatter,
+    )
+    
+    # Add common flags at top level for backwards compatibility
     parser.add_argument(
-        "-Q", "--quality", type=int, default=0, help="Quality level to calculate for (default: 0)"
+        "-q", "--quality", type=int, default=0, help="Quality level (default: 0)"
     )
     parser.add_argument(
-        "-S",
-        "--search",
-        type=str,
-        nargs="+",
-        help="Search for specific resources by name (case-insensitive)",
-    )
-    parser.add_argument(
-        "-B", "--building", type=str, nargs="+", help="Filter resources by building name"
-    )
-    parser.add_argument(
-        "-A",
+        "-a",
         "--abundance",
         type=float,
         default=90,
         help="Abundance percentage for mine/well resources (default: 90)",
     )
     parser.add_argument(
-        "-O",
-        "--admin-overhead",
-        type=float,
-        default=0,
-        help="Administration overhead percentage to add to wages (default: 0)",
-    )
-    parser.add_argument(
-        "-C",
+        "-c",
         "--contract",
         action="store_true",
-        help="Calculate values for direct contracts (0%% market fee, 50%% transportation cost)",
+        help="Direct contract mode (0%% market fee, 50%% transport)",
     )
     parser.add_argument(
+        "-r",
         "--robots",
         action="store_true",
-        help="Apply 3%% wage reduction for buildings with robots installed",
+        help="Apply 3%% wage reduction",
     )
     parser.add_argument(
-        "-R",
-        "--roi",
+        "-o",
+        "--overhead",
+        type=float,
+        default=0,
+        dest="admin_overhead",
+        help="Admin overhead percentage (default: 0)",
+    )
+    parser.add_argument(
+        "-b", "--building", type=str, nargs="+", help="Filter by building name"
+    )
+    parser.add_argument(
+        "-s",
+        "--search",
+        type=str,
+        nargs="+",
+        help="Search resources by name (case-insensitive)",
+    )
+    parser.add_argument(
+        "-e",
+        "--no-seasonal",
         action="store_true",
-        help="Calculate and display ROI for buildings based on best performing resource",
+        dest="exclude_seasonal",
+        help="Exclude seasonal resources",
     )
-    parser.add_argument(
-        "--lifecycle",
+    
+    subparsers = parser.add_subparsers(dest="command", help="Available commands")
+    
+    # Make the subparser optional by setting required=False
+    subparsers.required = False
+
+    # profit subcommand - default/main functionality
+    profit_parser = subparsers.add_parser(
+        "profit",
+        parents=[parent_parser],
+        help="Calculate production profits",
+        description="Calculate and display production profits for resources",
+    )
+    profit_parser.add_argument(
+        "-b", "--building", type=str, nargs="+", help="Filter by building name"
+    )
+    profit_parser.add_argument(
+        "-s",
+        "--search",
+        type=str,
+        nargs="+",
+        help="Search resources by name (case-insensitive)",
+    )
+    profit_parser.add_argument(
+        "-e",
+        "--no-seasonal",
         action="store_true",
-        help="Calculate lifecycle ROI for abundance resources (decays to 85%%)",
+        dest="exclude_seasonal",
+        help="Exclude seasonal resources",
     )
-    parser.add_argument(
-        "-D",
-        "--debug-unassigned",
+
+    # roi subcommand
+    roi_parser = subparsers.add_parser(
+        "roi",
+        parents=[parent_parser],
+        help="Building ROI analysis",
+        description="Analyze return on investment for buildings",
+    )
+    roi_parser.add_argument(
+        "-b", "--building", type=str, nargs="+", help="Filter by building name"
+    )
+    roi_parser.add_argument(
+        "-l",
+        "--level",
+        type=int,
+        default=20,
+        dest="max_level",
+        help="Maximum building level (default: 20)",
+    )
+    roi_parser.add_argument(
+        "-p",
+        "--per-step",
         action="store_true",
-        help="List all resources that are not assigned to any building",
+        dest="step_roi",
+        help="Calculate per-upgrade-step ROI",
     )
-    parser.add_argument(
-        "-E",
-        "--exclude-seasonal",
-        action="store_true",
-        help="Exclude seasonal resources from calculations",
+
+    # lifecycle subcommand
+    lifecycle_parser = subparsers.add_parser(
+        "lifecycle",
+        parents=[parent_parser],
+        help="Abundance decay/lifecycle analysis",
+        description="Calculate lifecycle ROI for abundance resources",
     )
-    parser.add_argument(
-        "-P",
-        "--prospect",
-        action="store_true",
-        help="Simulate prospecting to find target abundance",
+    lifecycle_parser.add_argument(
+        "-b", "--building", type=str, nargs="+", help="Filter by building name"
     )
-    parser.add_argument(
-        "-T",
+    lifecycle_parser.add_argument(
+        "-l",
+        "--level",
+        type=int,
+        default=20,
+        dest="max_level",
+        help="Maximum building level (default: 20)",
+    )
+    lifecycle_parser.add_argument(
+        "-t",
         "--time",
         type=float,
-        default=12,
-        help="Time in hours for one build attempt (default: 12)",
+        default=0.0,
+        dest="build_time",
+        help="Base build time in hours",
     )
-    parser.add_argument(
-        "-L",
+
+    # prospect subcommand
+    prospect_parser = subparsers.add_parser(
+        "prospect",
+        help="Prospecting simulation",
+        description="Simulate prospecting to find target abundance",
+    )
+    prospect_parser.add_argument(
+        "-t",
+        "--target",
+        type=float,
+        required=True,
+        dest="abundance",
+        help="Target abundance percentage",
+    )
+    prospect_parser.add_argument(
+        "-d",
+        "--duration",
+        type=float,
+        default=12,
+        dest="time",
+        help="Build time per attempt in hours (default: 12)",
+    )
+    prospect_parser.add_argument(
+        "-s",
         "--slots",
         type=int,
         default=1,
-        help="Number of simultaneous building slots (default: 1)",
+        help="Number of building slots (default: 1)",
     )
-    parser.add_argument(
-        "--max-level",
-        type=int,
-        default=20,
-        help="Maximum building level for ROI analysis (default: 20)",
+
+    # debug subcommand
+    debug_parser = subparsers.add_parser(
+        "debug",
+        help="Debugging utilities",
+        description="Various debugging and diagnostic tools",
     )
-    parser.add_argument(
-        "--step-roi",
+    debug_parser.add_argument(
+        "-u",
+        "--unassigned",
         action="store_true",
-        help="Calculate ROI based on individual upgrade steps rather than cumulative investment",
+        dest="debug_unassigned",
+        help="List resources not assigned to any building",
     )
-    parser.add_argument(
-        "--build-time",
-        type=float,
-        default=0.0,
-        help="Base construction time in hours (Lv 1) for lifecycle analysis",
-    )
-    return parser.parse_args()
+
+    args = parser.parse_args()
+    
+    # Set default command to 'profit' if none specified
+    if args.command is None:
+        args.command = "profit"
+    
+    return args
 
 
 def main() -> None:
@@ -431,11 +553,39 @@ def main() -> None:
     args = parse_args()
 
     # Handle prospecting simulation
-    if args.prospect:
+    if args.command == "prospect":
         results = simulate_prospecting(args.abundance / 100, args.time, args.slots)
         display_prospecting_results(results)
         return
 
+    # Handle debug commands
+    if args.command == "debug":
+        if args.debug_unassigned:
+            # Load data files
+            buildings = Building.load_all(get_data_path("buildings.json"))
+            resource_to_building = build_resource_to_building_map(buildings)
+            
+            # Fetch API data
+            api = SimcoAPI(realm=0)
+            try:
+                resources_data = api.get_resources()
+                raw_resources = resources_data.get("resources", [])
+                
+                unassigned = [
+                    res.get("name")
+                    for res in raw_resources
+                    if res.get("name", "").lower() not in resource_to_building
+                ]
+                unassigned.sort()
+                console.print("\n[bold red]Resources not assigned to any building:[/bold red]")
+                for name in unassigned:
+                    console.print(f" - {name}")
+            except Exception as exc:
+                console.print(f"[bold red]Error fetching data: {exc}[/bold red]")
+                raise
+        return
+
+    # For all other commands (profit, roi, lifecycle), we need full data
     # Load data files
     abundance_resources = load_json_list(get_data_path("abundance_resources.json"))
     seasonal_resources = load_json_list(get_data_path("seasonal_resources.json"))
@@ -448,19 +598,6 @@ def main() -> None:
     try:
         resources_data = api.get_resources()
         raw_resources = resources_data.get("resources", [])
-
-        # Handle debug mode
-        if args.debug_unassigned:
-            unassigned = [
-                res.get("name")
-                for res in raw_resources
-                if res.get("name", "").lower() not in resource_to_building
-            ]
-            unassigned.sort()
-            console.print("\n[bold red]Resources not assigned to any building:[/bold red]")
-            for name in unassigned:
-                console.print(f" - {name}")
-            return
 
         vwaps_data = api.get_market_vwaps()
 
@@ -538,12 +675,12 @@ def main() -> None:
         # Filter resources
         filtered_resources = resources
 
-        # Exclude seasonal if requested
-        if args.exclude_seasonal:
+        # Exclude seasonal if requested (only for profit command)
+        if args.command == "profit" and hasattr(args, "exclude_seasonal") and args.exclude_seasonal:
             filtered_resources = [r for r in filtered_resources if not r.is_seasonal]
 
         # Filter by building
-        if args.building:
+        if hasattr(args, "building") and args.building:
             filtered_resources = [
                 r
                 for r in filtered_resources
@@ -551,8 +688,8 @@ def main() -> None:
                 and any(term.lower() in r.building_name.lower() for term in args.building)
             ]
 
-        # Filter by search terms
-        if args.search:
+        # Filter by search terms (only for profit command)
+        if args.command == "profit" and hasattr(args, "search") and args.search:
             filtered_resources = [
                 r
                 for r in filtered_resources
@@ -570,7 +707,8 @@ def main() -> None:
 
         profits = calculate_all_profits(filtered_resources, price_map, transport_price, config)
 
-        if args.lifecycle:
+        # Handle lifecycle command
+        if args.command == "lifecycle":
             # Lifecycle Analysis
             abundance_res_objects = [r for r in filtered_resources if r.is_abundance]
             
@@ -604,15 +742,9 @@ def main() -> None:
             display_lifecycle_table(lifecycle_results, args.abundance)
             return
 
-        # Display results
-        if not (args.roi and args.building):
-            display_profits_table(
-                profits, transport_price, config, search_terms=args.search, building_terms=args.building
-            )
-
-        # ROI calculation
-        if args.roi and buildings:
-            if args.building:
+        # Handle ROI command
+        if args.command == "roi":
+            if hasattr(args, "building") and args.building:
                 # Generate level-based ROI for filtered buildings
                 res_profit_map = {p["name"].lower(): p for p in profits}
                 all_roi_data = []
@@ -642,6 +774,17 @@ def main() -> None:
             else:
                 roi_data = calculate_building_roi(buildings, profits, q0_price_map, name_to_id)
                 display_roi_table(roi_data)
+            return
+
+        # Handle profit command (default display)
+        if args.command == "profit":
+            display_profits_table(
+                profits, 
+                transport_price, 
+                config, 
+                search_terms=args.search if hasattr(args, "search") else None, 
+                building_terms=args.building if hasattr(args, "building") else None
+            )
 
     except Exception as exc:
         console.print(f"[bold red]Error fetching data: {exc}[/bold red]")
