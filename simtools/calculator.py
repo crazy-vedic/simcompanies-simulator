@@ -19,6 +19,7 @@ class ProfitConfig:
     abundance: float = 90.0
     admin_overhead: float = 0.0
     is_contract: bool = False
+    has_robots: bool = False
 
 
 def calculate_all_profits(
@@ -52,6 +53,7 @@ def calculate_all_profits(
             abundance=config.abundance,
             admin_overhead=config.admin_overhead,
             is_contract=config.is_contract,
+            has_robots=config.has_robots,
         )
         profits.append(profit_data)
 

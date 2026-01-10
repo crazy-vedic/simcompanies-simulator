@@ -9,7 +9,7 @@ A Python utility for calculating production profits in Sim Companies using the S
 - **Profit Calculation**: Calculates hourly profit by accounting for:
   - Selling price (at specific quality levels).
   - 4% market exchange fee (0% in direct contract mode).
-  - Production wages.
+  - Production wages (with optional 3% reduction for robots).
   - Administrative Overhead costs.
   - Input material costs.
   - Transportation costs (50% reduction in direct contract mode).
@@ -69,6 +69,7 @@ uv run main.py [options]
 - `-A`, `--abundance`: Specify the abundance percentage (0-100) for mine and well resources (default: `90`).
 - `-O`, `--admin-overhead`: Specify administration overhead percentage to add to wages (default: `0`).
 - `-C`, `--contract`: Calculate values for direct contracts (0% market fee, 50% transportation cost).
+- `--robots`: Apply 3% wage reduction for buildings with robots installed.
 - `-R`, `--roi`: Calculate and display ROI for buildings based on their best performing resource (uses Q0 prices for construction costs).
 - `-D`, `--debug-unassigned`: List all resources that are not assigned to any building in `buildings.json`.
 - `-E`, `--exclude-seasonal`: Exclude seasonal resources from all calculations.

@@ -168,7 +168,8 @@ def display_profits_table(
         f"Quality: [bold cyan]{config.quality}[/bold cyan] | "
         f"Transport: [bold cyan]${transport_price:.3f}[/bold cyan] | "
         f"Market Fee: [bold cyan]{market_fee_display}[/bold cyan] | "
-        f"Admin Overhead: [bold cyan]{config.admin_overhead}%[/bold cyan]"
+        f"Admin Overhead: [bold cyan]{config.admin_overhead}%[/bold cyan] | "
+        f"Robots: [bold cyan]{'Yes' if config.has_robots else 'No'}[/bold cyan]"
     )
 
     table = Table(
@@ -300,6 +301,11 @@ def parse_args() -> argparse.Namespace:
         "--contract",
         action="store_true",
         help="Calculate values for direct contracts (0%% market fee, 50%% transportation cost)",
+    )
+    parser.add_argument(
+        "--robots",
+        action="store_true",
+        help="Apply 3%% wage reduction for buildings with robots installed",
     )
     parser.add_argument(
         "-R",
@@ -481,6 +487,7 @@ def main() -> None:
             abundance=args.abundance,
             admin_overhead=args.admin_overhead,
             is_contract=args.contract,
+            has_robots=args.robots,
         )
 
         profits = calculate_all_profits(filtered_resources, price_map, transport_price, config)

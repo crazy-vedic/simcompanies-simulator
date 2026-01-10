@@ -107,6 +107,7 @@ class Resource:
         abundance: float = 100.0,
         admin_overhead: float = 0.0,
         is_contract: bool = False,
+        has_robots: bool = False,
     ) -> dict:
         """Calculate profit metrics for this resource.
 
@@ -117,6 +118,7 @@ class Resource:
             abundance: Abundance percentage for mine/well resources.
             admin_overhead: Administrative overhead percentage to add to wages.
             is_contract: If True, use contract mode (0% fee, 50% transport).
+            has_robots: If True, apply 3% wage reduction for robots.
 
         Returns:
             Dictionary with profit breakdown:
@@ -129,9 +131,13 @@ class Resource:
         """
         produced_per_hour = self.get_effective_production(abundance)
 
-        # Wages with admin overhead
-        admin_cost = self.wages * (admin_overhead / 100.0)
-        total_wages = self.wages + admin_cost
+        # Wages with optional robots reduction (3%) and admin overhead
+        base_wages = self.wages
+        if has_robots:
+            base_wages *= 0.97
+
+        admin_cost = base_wages * (admin_overhead / 100.0)
+        total_wages = base_wages + admin_cost
 
         # Revenue
         revenue_per_hour = selling_price * produced_per_hour
