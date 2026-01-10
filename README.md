@@ -86,7 +86,7 @@ Analyze return on investment for buildings based on their best performing resour
 - `-b`, `--building`: Filter by building name
 - `-l`, `--level`: Maximum building level (default: 20)
 - `-p`, `--per-step`: Calculate per-upgrade-step ROI
-- Plus common options: `-q`, `-a`, `-c`, `-r`, `-o`
+- Plus inherited: `-q`, `-a`, `-c`, `-r`, `-o`, `-e`
 
 #### `lifecycle` - Abundance decay/lifecycle analysis
 Calculate lifecycle ROI for abundance resources (simulates decay from starting abundance to 85%).
@@ -95,7 +95,7 @@ Calculate lifecycle ROI for abundance resources (simulates decay from starting a
 - `-b`, `--building`: Filter by building name
 - `-l`, `--level`: Maximum building level (default: 20)
 - `-t`, `--time`: Base build time in hours
-- Plus common options: `-q`, `-a`, `-c`, `-r`, `-o`
+- Plus inherited: `-q`, `-a`, `-c`, `-r`, `-o`, `-e`
 
 #### `prospect` - Prospecting simulation
 Simulate prospecting to find target abundance.

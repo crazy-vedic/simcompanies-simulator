@@ -356,6 +356,13 @@ def parse_args() -> argparse.Namespace:
         dest="admin_overhead",
         help="Admin overhead percentage (default: 0)",
     )
+    parent_parser.add_argument(
+        "-e",
+        "--no-seasonal",
+        action="store_true",
+        dest="exclude_seasonal",
+        help="Exclude seasonal resources",
+    )
 
     # Main parser
     parser = argparse.ArgumentParser(
@@ -433,13 +440,6 @@ def parse_args() -> argparse.Namespace:
         type=str,
         nargs="+",
         help="Search resources by name (case-insensitive)",
-    )
-    profit_parser.add_argument(
-        "-e",
-        "--no-seasonal",
-        action="store_true",
-        dest="exclude_seasonal",
-        help="Exclude seasonal resources",
     )
 
     # roi subcommand
@@ -675,8 +675,8 @@ def main() -> None:
         # Filter resources
         filtered_resources = resources
 
-        # Exclude seasonal if requested (only for profit command)
-        if args.command == "profit" and hasattr(args, "exclude_seasonal") and args.exclude_seasonal:
+        # Exclude seasonal if requested (available across all commands via parent parser)
+        if hasattr(args, "exclude_seasonal") and args.exclude_seasonal:
             filtered_resources = [r for r in filtered_resources if not r.is_seasonal]
 
         # Filter by building
