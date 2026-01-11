@@ -10,6 +10,8 @@ from rich import box
 from rich.console import Console
 from rich.table import Table
 
+from rich.progress import Progress, SpinnerColumn, TextColumn, BarColumn, TaskProgressColumn
+
 from simtools.api import SimcoAPI
 from simtools.calculator import (
     ProfitConfig,
@@ -19,6 +21,11 @@ from simtools.calculator import (
     calculate_lifecycle_roi,
     compare_market_vs_contract,
     simulate_prospecting,
+)
+from simtools.genetic import (
+    GeneticAlgorithm,
+    SimulationConfig,
+    render_ascii_graph,
 )
 from simtools.models.building import Building, build_resource_to_building_map
 from simtools.models.resource import Resource
@@ -423,6 +430,97 @@ def display_compare_table(
         )
 
 
+def display_genetic_results(
+    best_individual,
+    fitness_history: list[float],
+    config: SimulationConfig,
+    building_costs: dict[str, float],
+) -> None:
+    """Display genetic algorithm results.
+
+    Args:
+        best_individual: The best individual from the genetic algorithm.
+        fitness_history: List of best fitness values per generation.
+        config: Simulation configuration used.
+        building_costs: Map of building name to cost for display.
+    """
+    console.print("\n[bold blue]═══════════════════════════════════════════════════════════════[/bold blue]")
+    console.print("[bold blue]              GENETIC ALGORITHM RESULTS                        [/bold blue]")
+    console.print("[bold blue]═══════════════════════════════════════════════════════════════[/bold blue]\n")
+
+    # Configuration summary
+    console.print("[bold cyan]Configuration:[/bold cyan]")
+    console.print(f"  • Building Slots: [yellow]{config.slots}[/yellow]")
+    console.print(f"  • Max Budget: [yellow]${config.budget:,.0f}[/yellow]")
+    console.print(f"  • Population Size: [yellow]{config.population_size}[/yellow]")
+    console.print(f"  • Generations: [yellow]{config.generations}[/yellow]")
+    console.print(f"  • Max Building Level: [yellow]{config.max_level}[/yellow]")
+    console.print(f"  • Mutation Rate: [yellow]{config.mutation_rate:.1%}[/yellow]")
+    console.print(f"  • Crossover Rate: [yellow]{config.crossover_rate:.1%}[/yellow]")
+    console.print()
+
+    # Best configuration
+    console.print("[bold green]Best Building Configuration:[/bold green]")
+
+    if best_individual.genes:
+        table = Table(
+            show_header=True,
+            header_style="bold white on green",
+            box=box.ROUNDED,
+        )
+        table.add_column("Building", style="bold white")
+        table.add_column("Level", justify="center", style="cyan")
+        table.add_column("Cost", justify="right", style="yellow")
+
+        for gene in best_individual.genes:
+            cost = building_costs.get(gene.building_name, 0)
+            table.add_row(
+                gene.building_name,
+                str(gene.level),
+                f"${cost:,.0f}",
+            )
+
+        console.print(table)
+    else:
+        console.print("  [red]No buildings in best configuration[/red]")
+
+    console.print()
+
+    # Summary statistics
+    budget_status = "WITHIN" if best_individual.total_cost <= config.budget else "OVER"
+    budget_style = "green" if budget_status == "WITHIN" else "red"
+
+    console.print("[bold magenta]Results Summary:[/bold magenta]")
+    console.print(f"  • Total Investment: [yellow]${best_individual.total_cost:,.0f}[/yellow]")
+    console.print(f"  • Budget Status: [{budget_style}]{budget_status}[/{budget_style}] ({best_individual.total_cost / config.budget * 100:.1f}% of budget)")
+    console.print(f"  • Buildings Used: [yellow]{len(best_individual.genes)}[/yellow] / {config.slots} slots")
+
+    profit_style = "green" if best_individual.fitness >= 0 else "red"
+    console.print(f"  • 48-Hour Profit: [{profit_style}]${best_individual.fitness:,.2f}[/{profit_style}]")
+
+    if best_individual.fitness > 0:
+        hourly = best_individual.fitness / 48
+        daily = hourly * 24
+        console.print(f"  • Hourly Profit: [green]${hourly:,.2f}[/green]")
+        console.print(f"  • Daily Profit: [green]${daily:,.2f}[/green]")
+        if best_individual.total_cost > 0:
+            roi_days = best_individual.total_cost / daily
+            console.print(f"  • ROI Break-even: [cyan]{roi_days:.1f} days[/cyan]")
+
+    console.print()
+
+    # Fitness graph
+    if fitness_history:
+        console.print("[bold blue]Fitness Evolution Graph:[/bold blue]")
+        # Adapt width to data size (min 30, max 60)
+        graph_width = min(60, max(30, len(fitness_history)))
+        graph_lines = render_ascii_graph(fitness_history, width=graph_width, height=12)
+        for line in graph_lines:
+            console.print(f"  {line}")
+
+    console.print()
+
+
 def parse_args() -> argparse.Namespace:
     """Parse command-line arguments using subcommands.
 
@@ -668,6 +766,88 @@ def parse_args() -> argparse.Namespace:
         required=True,
         dest="contract_price",
         help="Contract price per unit (e.g., 97.5)",
+    )
+
+    # genetic subcommand
+    genetic_parser = subparsers.add_parser(
+        "genetic",
+        parents=[parent_parser],
+        help="Genetic algorithm optimization",
+        description="Use genetic algorithm to find optimal building configuration for maximum profit",
+    )
+    genetic_parser.add_argument(
+        "-s",
+        "--slots",
+        type=int,
+        default=5,
+        help="Number of building slots (default: 5)",
+    )
+    genetic_parser.add_argument(
+        "-b",
+        "--budget",
+        type=float,
+        default=100000,
+        help="Maximum investment budget (default: 100000)",
+    )
+    genetic_parser.add_argument(
+        "-p",
+        "--population",
+        type=int,
+        default=50,
+        dest="population_size",
+        help="Population size (default: 50)",
+    )
+    genetic_parser.add_argument(
+        "-g",
+        "--generations",
+        type=int,
+        default=100,
+        help="Number of generations (default: 100)",
+    )
+    genetic_parser.add_argument(
+        "-m",
+        "--mutation-rate",
+        type=float,
+        default=0.1,
+        dest="mutation_rate",
+        help="Mutation rate 0.0-1.0 (default: 0.1)",
+    )
+    genetic_parser.add_argument(
+        "-x",
+        "--crossover-rate",
+        type=float,
+        default=0.7,
+        dest="crossover_rate",
+        help="Crossover rate 0.0-1.0 (default: 0.7)",
+    )
+    genetic_parser.add_argument(
+        "-l",
+        "--max-level",
+        type=int,
+        default=10,
+        dest="max_level",
+        help="Maximum building level (default: 10)",
+    )
+    genetic_parser.add_argument(
+        "-t",
+        "--tournament-size",
+        type=int,
+        default=3,
+        dest="tournament_size",
+        help="Tournament size for selection (default: 3)",
+    )
+    genetic_parser.add_argument(
+        "--elitism",
+        type=int,
+        default=2,
+        help="Number of best individuals to preserve (default: 2)",
+    )
+    genetic_parser.add_argument(
+        "--budget-penalty",
+        type=float,
+        default=2.0,
+        dest="budget_penalty_factor",
+        help="Penalty factor for budget overage (default: 2.0)",
     )
 
     args = parser.parse_args()
@@ -961,6 +1141,74 @@ def main() -> None:
                 console.print(
                     f"[bold red]No valid comparisons could be made. Check that resources have market prices at Quality {config.quality}[/bold red]"
                 )
+
+        # Handle genetic algorithm command
+        if args.command == "genetic":
+            # Create simulation config
+            sim_config = SimulationConfig(
+                slots=args.slots,
+                budget=args.budget,
+                population_size=args.population_size,
+                generations=args.generations,
+                mutation_rate=args.mutation_rate,
+                crossover_rate=args.crossover_rate,
+                max_level=args.max_level,
+                elitism=args.elitism,
+                tournament_size=args.tournament_size,
+                budget_penalty_factor=args.budget_penalty_factor,
+            )
+
+            # Create and run genetic algorithm
+            ga = GeneticAlgorithm(
+                config=sim_config,
+                buildings=buildings,
+                resources=resources,
+                price_map=price_map,
+                q0_price_map=q0_price_map,
+                transport_price=transport_price,
+                name_to_id=name_to_id,
+                abundance=args.abundance,
+                admin_overhead=args.admin_overhead,
+                has_robots=args.robots,
+            )
+
+            console.print("\n[bold blue]Starting Genetic Algorithm Optimization...[/bold blue]\n")
+
+            # Run with progress indicator
+            with Progress(
+                SpinnerColumn(),
+                TextColumn("[progress.description]{task.description}"),
+                BarColumn(),
+                TaskProgressColumn(),
+                console=console,
+            ) as progress:
+                task = progress.add_task(
+                    "[cyan]Evolving population...",
+                    total=sim_config.generations,
+                )
+
+                def update_progress(gen: int, best: float, avg: float) -> None:
+                    progress.update(
+                        task,
+                        completed=gen,
+                        description=f"[cyan]Gen {gen}/{sim_config.generations} | Best: ${best:,.0f} | Avg: ${avg:,.0f}",
+                    )
+
+                best_individual, fitness_history = ga.run(progress_callback=update_progress)
+
+            # Calculate building costs for display
+            building_costs = {}
+            for gene in best_individual.genes:
+                cost = ga.calculate_building_cost(gene.building_name, gene.level)
+                building_costs[gene.building_name] = cost
+
+            # Display results
+            display_genetic_results(
+                best_individual,
+                fitness_history,
+                sim_config,
+                building_costs,
+            )
 
     except Exception as exc:
         console.print(f"[bold red]Error fetching data: {exc}[/bold red]")
