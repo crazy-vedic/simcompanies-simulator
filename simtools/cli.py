@@ -1166,7 +1166,7 @@ def main() -> None:
             ga = GeneticAlgorithm(
                 config=sim_config,
                 buildings=buildings,
-                resources=resources,
+                resources=filtered_resources,
                 price_map=price_map,
                 q0_price_map=q0_price_map,
                 transport_price=transport_price,
