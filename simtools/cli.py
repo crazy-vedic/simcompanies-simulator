@@ -468,13 +468,18 @@ def display_genetic_results(
             box=box.ROUNDED,
         )
         table.add_column("Building", style="bold white")
+        table.add_column("Produces", style="magenta")
         table.add_column("Level", justify="center", style="cyan")
         table.add_column("Cost", justify="right", style="yellow")
 
         for gene in best_individual.genes:
             cost = ga.calculate_building_cost(gene.building_name, gene.level)
+            # Get the resource this building will produce (most profitable one)
+            resource = ga.get_best_resource_for_building(gene.building_name)
+            resource_name = resource.name if resource else "N/A"
             table.add_row(
                 gene.building_name,
+                resource_name,
                 str(gene.level),
                 f"${cost:,.0f}",
             )
