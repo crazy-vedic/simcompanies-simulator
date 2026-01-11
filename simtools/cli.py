@@ -8,9 +8,8 @@ from pathlib import Path
 
 from rich import box
 from rich.console import Console
-from rich.table import Table
-
 from rich.progress import Progress, SpinnerColumn, TextColumn, BarColumn, TaskProgressColumn
+from rich.table import Table
 
 from simtools.api import SimcoAPI
 from simtools.calculator import (

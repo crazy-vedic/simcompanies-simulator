@@ -18,7 +18,7 @@ class BuildingGene:
     
     Attributes:
         building_name: Name of the building type.
-        level: Building level (1-N).
+        level: Building level (1 to SimulationConfig.max_level).
     """
     building_name: str
     level: int = 1
@@ -170,6 +170,9 @@ class GeneticAlgorithm:
         )
         
         # Add upgrade costs (sum of k * base_cost for k = 1 to level-1)
+        # This is consistent with Building.calculate_upgrade_cost which uses:
+        # step cost from k to k+1 is k * base_cost
+        # So total upgrade from 1 to level = sum(k for k=1 to level-1) = level*(level-1)/2
         if level <= 1:
             return base_cost
         
@@ -336,10 +339,11 @@ class GeneticAlgorithm:
         if total_cost > self.config.budget:
             overage_ratio = total_cost / self.config.budget
             # The penalty grows quadratically with overage ratio
-            # If 2x over budget, penalty is 4x the profit
-            # If 10x over budget, penalty is 100x the profit
-            penalty_multiplier = overage_ratio ** 2 * self.config.budget_penalty_factor
-            profit -= abs(profit) * penalty_multiplier
+            # Use the budget as the base for penalty calculation to ensure consistent scaling
+            # If 2x over budget, penalty = 4 * budget * penalty_factor
+            # This ensures over-budget configurations are strongly discouraged
+            penalty = overage_ratio ** 2 * self.config.budget * self.config.budget_penalty_factor
+            profit -= penalty
         
         individual.fitness = profit
         return profit
@@ -566,10 +570,35 @@ def render_ascii_graph(data: list[float], width: int = 60, height: int = 15) -> 
     if not data:
         return ["No data to display"]
     
+    # Handle single value or all same values
+    if len(data) == 1:
+        return [f"Single data point: {data[0]:,.2f}"]
+    
     # Normalize data to fit in height
     min_val = min(data)
     max_val = max(data)
-    value_range = max_val - min_val if max_val != min_val else 1
+    
+    # Handle case where all values are the same
+    if max_val == min_val:
+        # Display a flat line at middle height
+        graph = [[" " for _ in range(min(width, len(data)))] for _ in range(height)]
+        mid_row = height // 2
+        for x in range(min(width, len(data))):
+            graph[mid_row][x] = "█"
+        
+        lines = []
+        for i, row in enumerate(graph):
+            if i == 0 or i == height - 1 or i == height // 2:
+                label = f"{max_val:>12,.0f} │"
+            else:
+                label = "             │"
+            lines.append(label + "".join(row))
+        
+        lines.append("             └" + "─" * len(graph[0]))
+        lines.append(f"              1 (constant value){' ' * (len(graph[0]) - 20)}{len(data)}")
+        return lines
+    
+    value_range = max_val - min_val
     
     # Create empty graph
     graph = [[" " for _ in range(width)] for _ in range(height)]
