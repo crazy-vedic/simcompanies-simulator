@@ -434,7 +434,7 @@ def display_genetic_results(
     best_individual,
     fitness_history: list[float],
     config: SimulationConfig,
-    building_costs: dict[str, float],
+    ga: GeneticAlgorithm,
 ) -> None:
     """Display genetic algorithm results.
 
@@ -442,7 +442,7 @@ def display_genetic_results(
         best_individual: The best individual from the genetic algorithm.
         fitness_history: List of best fitness values per generation.
         config: Simulation configuration used.
-        building_costs: Map of building name to cost for display.
+        ga: The GeneticAlgorithm instance for calculating costs.
     """
     console.print("\n[bold blue]═══════════════════════════════════════════════════════════════[/bold blue]")
     console.print("[bold blue]              GENETIC ALGORITHM RESULTS                        [/bold blue]")
@@ -473,7 +473,7 @@ def display_genetic_results(
         table.add_column("Cost", justify="right", style="yellow")
 
         for gene in best_individual.genes:
-            cost = building_costs.get(gene.building_name, 0)
+            cost = ga.calculate_building_cost(gene.building_name, gene.level)
             table.add_row(
                 gene.building_name,
                 str(gene.level),
@@ -1196,18 +1196,12 @@ def main() -> None:
 
                 best_individual, fitness_history = ga.run(progress_callback=update_progress)
 
-            # Calculate building costs for display
-            building_costs = {}
-            for gene in best_individual.genes:
-                cost = ga.calculate_building_cost(gene.building_name, gene.level)
-                building_costs[gene.building_name] = cost
-
             # Display results
             display_genetic_results(
                 best_individual,
                 fitness_history,
                 sim_config,
-                building_costs,
+                ga,
             )
 
     except Exception as exc:

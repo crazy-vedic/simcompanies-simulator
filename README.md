@@ -119,6 +119,22 @@ Compare selling on the market vs selling via contracts with a custom contract pr
 - `-p`, `--price`: Contract price per unit (required, accepts floats like 97.5)
 - Plus inherited: `-q`, `-a`, `-r`, `-o`, `-e`
 
+#### `genetic` - Genetic algorithm optimization
+Use a genetic algorithm to find the optimal building configuration for maximum profit within a budget constraint. The algorithm simulates 48 hours of production, using company inventory for inputs when available and buying missing inputs from the market. At the end, all inventory is sold with market fees and transportation costs applied.
+
+**Options:**
+- `-s`, `--slots`: Number of building slots available (default: 5)
+- `-b`, `--budget`: Maximum investment budget for all buildings (default: 100000)
+- `-p`, `--population`: Population size for the genetic algorithm (default: 50)
+- `-g`, `--generations`: Number of generations to evolve (default: 100)
+- `-m`, `--mutation-rate`: Probability of mutation 0.0-1.0 (default: 0.1)
+- `-x`, `--crossover-rate`: Probability of crossover 0.0-1.0 (default: 0.7)
+- `-l`, `--max-level`: Maximum building level allowed (default: 10)
+- `-t`, `--tournament-size`: Tournament size for selection (default: 3)
+- `--elitism`: Number of best individuals to preserve each generation (default: 2)
+- `--budget-penalty`: Penalty factor for exceeding budget (default: 2.0)
+- Plus inherited: `-q`, `-a`, `-r`, `-o`, `-e`
+
 ### Examples
 
 **View top 30 most profitable quality 0 resources with 85% abundance:**
@@ -207,6 +223,21 @@ uv run main.py compare -s steel iron -p 50
 uv run main.py compare -s steel -p 97 -r -o 5
 ```
 
+**Run genetic algorithm optimization with 5 slots and $500,000 budget:**
+```bash
+uv run main.py genetic -s 5 -b 500000
+```
+
+**Run genetic algorithm with custom parameters:**
+```bash
+uv run main.py genetic -s 3 -b 100000 -p 50 -g 100 -l 10 -m 0.15
+```
+
+**Run a quick genetic optimization with fewer generations:**
+```bash
+uv run main.py genetic -s 5 -b 200000 -g 30 -p 20
+```
+
 ### Backwards Compatibility
 
 For ease of migration, the tool supports running without specifying a subcommand. When no subcommand is provided, it defaults to the `profit` command. Additionally, common flags (`-q`, `-a`, `-c`, `-r`, `-o`, `-b`, `-s`, `-e`) are available at the top level for backwards compatibility:
@@ -289,6 +320,28 @@ When using the `compare` command, the tool displays a side-by-side comparison:
 **Difference columns:**
 - **Diff/u**: Difference in net profit per unit (Contract - Market). Green if contract is better, red if worse.
 - **Diff/hr**: Difference in profit per hour (Contract - Market). Green if contract is better, red if worse.
+
+### Genetic Algorithm Output (when using genetic)
+When using the `genetic` command, the tool displays:
+
+**Configuration Summary:**
+- Shows all parameters used for the genetic algorithm run including slots, budget, population size, generations, and rates.
+
+**Best Building Configuration:**
+- A table showing the optimal buildings found, their levels, and individual costs.
+
+**Results Summary:**
+- **Total Investment**: Combined cost of all buildings in the configuration.
+- **Budget Status**: Whether the configuration is WITHIN or OVER the specified budget.
+- **Buildings Used**: Number of building slots utilized out of total available.
+- **48-Hour Profit**: Net profit from the simulated 48-hour production period.
+- **Hourly/Daily Profit**: Calculated average profit rates.
+- **ROI Break-even**: Days to recover the building investment from profits.
+
+**Fitness Evolution Graph:**
+- An ASCII graph showing how the best fitness improved over generations.
+- Use this to determine if more generations or larger population would help.
+- A flat line at the end suggests convergence; a still-rising line suggests more generations could improve results.
 
 ## Data Files
 
