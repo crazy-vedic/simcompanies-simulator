@@ -7,6 +7,12 @@ import random
 from dataclasses import dataclass, field
 from typing import TYPE_CHECKING
 
+from simtools.calculator import (
+    ProfitConfig,
+    calculate_total_investment,
+    find_best_resource_profit,
+)
+
 if TYPE_CHECKING:
     from simtools.models.building import Building
     from simtools.models.resource import Resource
@@ -164,21 +170,11 @@ class GeneticAlgorithm:
         if not building:
             return 0.0
         
-        # Base construction cost
-        base_cost, _ = building.calculate_construction_cost(
-            self.q0_price_map, self.name_to_id
+        # Use centralized helper for consistent calculation
+        total_cost, _ = calculate_total_investment(
+            building, level, self.q0_price_map, self.name_to_id
         )
-        
-        # Add upgrade costs (sum of k * base_cost for k = 1 to level-1)
-        # This is consistent with Building.calculate_upgrade_cost which uses:
-        # step cost from k to k+1 is k * base_cost
-        # So total upgrade from 1 to level = sum(k for k=1 to level-1) = level*(level-1)/2
-        if level <= 1:
-            return base_cost
-        
-        # Total upgrade cost = base_cost * (1 + 2 + ... + (level-1)) = base_cost * level * (level-1) / 2
-        upgrade_cost = base_cost * level * (level - 1) / 2
-        return base_cost + upgrade_cost
+        return total_cost
     
     def calculate_individual_cost(self, individual: Individual) -> float:
         """Calculate the total cost of all buildings for an individual.
@@ -207,28 +203,16 @@ class GeneticAlgorithm:
         if not resources:
             return None
         
-        best_resource = None
-        best_profit = float("-inf")
-        
-        for res in resources:
-            selling_price = self.price_map.get(res.id, 0)
-            if selling_price <= 0:
-                continue
-            
-            profit_data = res.calculate_profit(
-                selling_price=selling_price,
-                input_prices=self.price_map,
-                transport_price=self.transport_price,
-                abundance=self.abundance,
-                admin_overhead=self.admin_overhead,
-                is_contract=False,
-                has_robots=self.has_robots,
-            )
-            
-            if profit_data["profit_per_hour"] > best_profit:
-                best_profit = profit_data["profit_per_hour"]
-                best_resource = res
-        
+        # Use centralized helper with a config matching our settings
+        config = ProfitConfig(
+            abundance=self.abundance,
+            admin_overhead=self.admin_overhead,
+            is_contract=False,
+            has_robots=self.has_robots,
+        )
+        best_resource, _ = find_best_resource_profit(
+            resources, self.price_map, self.transport_price, config
+        )
         return best_resource
     
     def simulate_48_hours(self, individual: Individual) -> float:

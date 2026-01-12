@@ -1304,6 +1304,9 @@ def main() -> None:
                 if any(term.lower() in r.name.lower() for term in args.search)
             ]
 
+        # Create lookup for filtered resources (used by analyze and genetic commands)
+        filtered_resource_by_name = {r.name.lower(): r for r in filtered_resources}
+
         # Calculate profits
         config = ProfitConfig(
             quality=args.quality,
@@ -1525,12 +1528,13 @@ def main() -> None:
             # Create building ID to Building object lookup
             id_to_building = {b.id: b for b in buildings}
 
-            # Create building resources lookup
+            # Create building resources lookup using filtered resources
+            # This respects the -e flag to exclude seasonal resources
             building_resources: dict[str, list[Resource]] = {}
             for building in buildings:
                 res_list = []
                 for res_name in building.produces:
-                    res = resource_by_name.get(res_name.lower())
+                    res = filtered_resource_by_name.get(res_name.lower())
                     if res:
                         res_list.append(res)
                 if res_list:
