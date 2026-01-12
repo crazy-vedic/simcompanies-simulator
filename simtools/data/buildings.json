@@ -1,5 +1,6 @@
 [
   {
+    "id": "P",
     "name": "Farm",
     "cost": {
       "Reinforced concrete": 8,
@@ -23,6 +24,7 @@
     ]
   },
   {
+    "id": "F",
     "name": "Ranch",
     "cost": {
       "Bricks": 165,
@@ -39,6 +41,7 @@
     ]
   },
   {
+    "id": "e",
     "name": "Slaughterhouse",
     "cost": {
       "Bricks": 330,
@@ -52,6 +55,7 @@
     ]
   },
   {
+    "id": "i",
     "name": "Mill",
     "cost": {
       "Bricks": 440,
@@ -66,6 +70,7 @@
     ]
   },
   {
+    "id": "6",
     "name": "Beverage factory",
     "cost": {
       "Bricks": 220,
@@ -81,6 +86,7 @@
     ]
   },
   {
+    "id": "k",
     "name": "Food processing plant",
     "cost": {
       "Bricks": 1375,
@@ -103,6 +109,7 @@
     ]
   },
   {
+    "id": "j",
     "name": "Bakery",
     "cost": {
       "Bricks": 605,
@@ -117,6 +124,7 @@
     ]
   },
   {
+    "id": "m",
     "name": "Catering",
     "cost": {
       "Bricks": 1650,
@@ -136,6 +144,7 @@
     ]
   },
   {
+    "id": "o",
     "name": "Concrete plant",
     "cost": {
       "Bricks": 935,
@@ -150,6 +159,7 @@
     ]
   },
   {
+    "id": "x",
     "name": "Construction factory",
     "cost": {
       "Bricks": 1155,
@@ -165,6 +175,7 @@
     ]
   },
   {
+    "id": "Q",
     "name": "Quarry",
     "cost": {
       "Bricks": 385,
@@ -179,6 +190,7 @@
     ]
   },
   {
+    "id": "T",
     "name": "Fashion factory",
     "cost": {
       "Bricks": 220,
@@ -200,6 +212,7 @@
     ]
   },
   {
+    "id": "E",
     "name": "Power plant",
     "cost": {
       "Bricks": 825,
@@ -212,6 +225,7 @@
     ]
   },
   {
+    "id": "O",
     "name": "Oil rig",
     "cost": {
       "Bricks": 1100,
@@ -225,6 +239,7 @@
     ]
   },
   {
+    "id": "R",
     "name": "Refinery",
     "cost": {
       "Bricks": 1100,
@@ -241,6 +256,7 @@
     ]
   },
   {
+    "id": "L",
     "name": "Electronics factory",
     "cost": {
       "Bricks": 1320,
@@ -265,6 +281,7 @@
     ]
   },
   {
+    "id": "1",
     "name": "Car factory",
     "cost": {
       "Bricks": 1485,
@@ -285,6 +302,7 @@
     ]
   },
   {
+    "id": "7",
     "name": "Aerospace factory",
     "cost": {
       "Bricks": 1705,
@@ -303,6 +321,7 @@
     ]
   },
   {
+    "id": "D",
     "name": "Propulsion factory",
     "cost": {
       "Bricks": 1650,
@@ -320,6 +339,7 @@
     ]
   },
   {
+    "id": "0",
     "name": "Hangar",
     "cost": {
       "Bricks": 1595,
@@ -334,6 +354,7 @@
     ]
   },
   {
+    "id": "8",
     "name": "Aerospace electronics",
     "cost": {
       "Bricks": 2255,
@@ -350,6 +371,7 @@
     ]
   },
   {
+    "id": "W",
     "name": "Water reservoir",
     "cost": {
       "Bricks": 330,
@@ -362,6 +384,7 @@
     ]
   },
   {
+    "id": "S",
     "name": "Shipping depot",
     "cost": {
       "Bricks": 825,
@@ -374,6 +397,7 @@
     ]
   },
   {
+    "id": "R",
     "name": "Refinery",
     "cost": {
       "Bricks": 1100,
@@ -390,6 +414,7 @@
     ]
   },
   {
+    "id": "M",
     "name": "Mine",
     "cost": {
       "Bricks": 385,
@@ -405,6 +430,7 @@
     ]
   },
   {
+    "id": "Y",
     "name": "Factory",
     "cost": {
       "Bricks": 770,
@@ -425,6 +451,7 @@
     ]
   },
   {
+    "id": "g",
     "name": "General contractor",
     "cost": {
       "Bricks": 770,
@@ -437,6 +464,7 @@
     ]
   },
   {
+    "id": "9",
     "name": "Vertical integration facility",
     "cost": {
       "Bricks": 1815,
@@ -450,6 +478,7 @@
     ]
   },
   {
+    "id": "s",
     "name": "Software R&D",
     "cost": {
       "Bricks": 1045,
@@ -462,6 +491,7 @@
     ]
   },
   {
+    "id": "f",
     "name": "Fashion & Design",
     "cost": {
       "Bricks": 1155,
@@ -474,6 +504,7 @@
     ]
   },
   {
+    "id": "q",
     "name": "Kitchen",
     "cost": {
       "Bricks": 1320,
@@ -486,6 +517,7 @@
     ]
   },
   {
+    "id": "b",
     "name": "Breeding laboratory",
     "cost": {
       "Bricks": 1540,
@@ -498,6 +530,7 @@
     ]
   },
   {
+    "id": "c",
     "name": "Chemistry laboratory",
     "cost": {
       "Bricks": 1540,
@@ -511,6 +544,7 @@
     ]
   },
   {
+    "id": "p",
     "name": "Plant research center",
     "cost": {
       "Bricks": 1650,
@@ -523,6 +557,7 @@
     ]
   },
   {
+    "id": "l",
     "name": "Launch pad",
     "cost": {
       "Bricks": 1980,
@@ -535,6 +570,7 @@
     ]
   },
   {
+    "id": "a",
     "name": "Automotive R&D",
     "cost": {
       "Bricks": 2200,
@@ -547,6 +583,7 @@
     ]
   },
   {
+    "id": "h",
     "name": "Physics laboratory",
     "cost": {
       "Bricks": 2640,
