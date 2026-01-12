@@ -654,7 +654,12 @@ def prompt_building_levels(
     building_levels = {}
 
     for building_id, count in building_ids.items():
-        building_name = id_to_name.get(building_id, f"Unknown ({building_id})")
+        building_name = id_to_name.get(building_id)
+
+        # Skip buildings that are not in buildings.json
+        if building_name is None:
+            console.print(f"[yellow]Skipping unknown building (ID: {building_id}) - not in buildings.json[/yellow]")
+            continue
 
         if count > 1:
             console.print(f"[bold]{building_name}[/bold] (x{count}):")
