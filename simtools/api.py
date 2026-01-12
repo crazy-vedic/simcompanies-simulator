@@ -92,3 +92,20 @@ class SimcoAPI:
                 return data["vwaps"]
             return data
 
+    def get_company(self, user_id: int) -> dict:
+        """Fetch company data for a specific user.
+
+        Args:
+            user_id: The user ID to fetch company data for.
+
+        Returns:
+            Dictionary with company data including buildings.
+        """
+        url = f"{self.base_url}/companies/{user_id}"
+        with console.status(
+            f"[bold green]Fetching company data for user {user_id}...", spinner="dots"
+        ):
+            response = httpx.get(url, headers=self.headers)
+            response.raise_for_status()
+            return response.json()
+

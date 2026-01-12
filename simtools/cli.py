@@ -16,8 +16,10 @@ from simtools.calculator import (
     ProfitConfig,
     calculate_all_profits,
     calculate_building_roi,
+    calculate_company_building_stats,
     calculate_level_roi,
     calculate_lifecycle_roi,
+    calculate_upgrade_recommendations,
     compare_market_vs_contract,
     simulate_prospecting,
 )
@@ -427,6 +429,270 @@ def display_compare_table(
             f"[bold red](!)[/bold red] indicates one or more source materials had no "
             f"Quality {config.quality} market price"
         )
+
+
+def display_company_analysis(
+    company_data: dict,
+    building_stats: list[dict],
+    config: ProfitConfig,
+) -> None:
+    """Display company analysis results.
+
+    Args:
+        company_data: Raw company data from API.
+        building_stats: List of building statistics from calculate_company_building_stats.
+        config: Profit calculation configuration.
+    """
+    company = company_data.get("company", {})
+
+    console.print("\n[bold blue]═══════════════════════════════════════════════════════════════[/bold blue]")
+    console.print("[bold blue]              COMPANY ANALYSIS                                 [/bold blue]")
+    console.print("[bold blue]═══════════════════════════════════════════════════════════════[/bold blue]\n")
+
+    # Company info
+    console.print("[bold cyan]Company Info:[/bold cyan]")
+    console.print(f"  • Name: [yellow]{company.get('name', 'N/A')}[/yellow]")
+    console.print(f"  • Level: [yellow]{company.get('level', 'N/A')}[/yellow]")
+    console.print(f"  • Rating: [yellow]{company.get('rating', 'N/A')}[/yellow]")
+    console.print(f"  • Total Buildings: [yellow]{company.get('totalBuildings', 'N/A')}[/yellow]")
+    console.print(f"  • Workers: [yellow]{company.get('workers', 'N/A')}[/yellow]")
+    console.print(f"  • Building Value: [yellow]${company.get('buildingValue', 0):,.0f}[/yellow]")
+    console.print()
+
+    # Configuration used
+    console.print("[bold cyan]Analysis Configuration:[/bold cyan]")
+    market_fee_display = "0%" if config.is_contract else "4%"
+    console.print(
+        f"  • Quality: [yellow]{config.quality}[/yellow] | "
+        f"Abundance: [yellow]{config.abundance}%[/yellow] | "
+        f"Market Fee: [yellow]{market_fee_display}[/yellow] | "
+        f"Admin Overhead: [yellow]{config.admin_overhead}%[/yellow] | "
+        f"Robots: [yellow]{'Yes' if config.has_robots else 'No'}[/yellow]"
+    )
+    console.print()
+
+    if not building_stats:
+        console.print("[yellow]No building data available for analysis.[/yellow]")
+        return
+
+    # Buildings table
+    table = Table(
+        title="Building Performance Analysis",
+        show_header=True,
+        header_style="bold white on green",
+        box=box.ROUNDED,
+    )
+    table.add_column("Building", style="bold white")
+    table.add_column("Lv", justify="center", style="cyan")
+    table.add_column("Best Resource", style="magenta")
+    table.add_column("$/hour", justify="right", style="green")
+    table.add_column("$/day", justify="right", style="green")
+    table.add_column("Value", justify="right", style="yellow")
+    table.add_column("ROI/day", justify="right", style="bold cyan")
+    table.add_column("Break Even", justify="right", style="white")
+
+    total_hourly = 0.0
+    total_daily = 0.0
+    total_value = 0.0
+
+    for stat in building_stats:
+        total_hourly += stat["hourly_profit"]
+        total_daily += stat["daily_profit"]
+        total_value += stat["building_value"]
+
+        if stat["break_even_days"] == float("inf"):
+            break_even_str = "∞"
+        elif stat["daily_profit"] < 0:
+            break_even_str = "Never"
+        else:
+            break_even_str = f"{stat['break_even_days']:.1f} days"
+
+        warn = " (!)" if stat["missing_cost"] else ""
+        profit_style = "green" if stat["hourly_profit"] >= 0 else "red"
+
+        table.add_row(
+            stat["building_name"],
+            str(stat["level"]),
+            stat["best_resource"] or "N/A",
+            f"[{profit_style}]${stat['hourly_profit']:,.2f}[/{profit_style}]",
+            f"[{profit_style}]${stat['daily_profit']:,.2f}[/{profit_style}]",
+            f"${stat['building_value']:,.0f}{warn}",
+            f"{stat['roi_daily']:.2f}%",
+            break_even_str,
+        )
+
+    console.print(table)
+
+    # Summary
+    console.print("\n[bold magenta]Summary:[/bold magenta]")
+    profit_style = "green" if total_hourly >= 0 else "red"
+    console.print(f"  • Total Hourly Profit: [{profit_style}]${total_hourly:,.2f}[/{profit_style}]")
+    console.print(f"  • Total Daily Profit: [{profit_style}]${total_daily:,.2f}[/{profit_style}]")
+    console.print(f"  • Total Building Value: [yellow]${total_value:,.0f}[/yellow]")
+    if total_value > 0:
+        overall_roi = (total_daily / total_value) * 100
+        console.print(f"  • Overall Daily ROI: [cyan]{overall_roi:.2f}%[/cyan]")
+        if total_daily > 0:
+            overall_break_even = total_value / total_daily
+            console.print(f"  • Overall Break Even: [white]{overall_break_even:.1f} days[/white]")
+
+    if any(stat["missing_cost"] for stat in building_stats):
+        console.print(
+            "\n[yellow](!) Warning: Some building costs calculated with missing "
+            "material prices (assumed $0).[/yellow]"
+        )
+
+
+def display_upgrade_recommendations(
+    recommendations: list[dict],
+    config: ProfitConfig,
+    top_n: int = 10,
+) -> None:
+    """Display upgrade recommendations.
+
+    Args:
+        recommendations: List of upgrade recommendations sorted by marginal ROI.
+        config: Profit calculation configuration.
+        top_n: Number of top recommendations to display.
+    """
+    console.print("\n[bold blue]═══════════════════════════════════════════════════════════════[/bold blue]")
+    console.print("[bold blue]              UPGRADE RECOMMENDATIONS                          [/bold blue]")
+    console.print("[bold blue]═══════════════════════════════════════════════════════════════[/bold blue]\n")
+
+    if not recommendations:
+        console.print("[yellow]No upgrade recommendations available.[/yellow]")
+        return
+
+    console.print(
+        "[bold cyan]Recommendation based on marginal ROI:[/bold cyan] "
+        "The best upgrade is the one that gives the highest return on the upgrade cost."
+    )
+    console.print()
+
+    table = Table(
+        title=f"Top {min(top_n, len(recommendations))} Upgrade Recommendations",
+        show_header=True,
+        header_style="bold white on blue",
+        box=box.ROUNDED,
+    )
+    table.add_column("#", justify="center", style="bold white")
+    table.add_column("Building", style="bold white")
+    table.add_column("Upgrade", justify="center", style="cyan")
+    table.add_column("Best Resource", style="magenta")
+    table.add_column("Upgrade Cost", justify="right", style="yellow")
+    table.add_column("+$/day", justify="right", style="green")
+    table.add_column("Marginal ROI", justify="right", style="bold cyan")
+    table.add_column("Break Even", justify="right", style="white")
+
+    for i, rec in enumerate(recommendations[:top_n], 1):
+        if rec["marginal_break_even"] == float("inf"):
+            break_even_str = "∞"
+        elif rec["additional_daily_profit"] < 0:
+            break_even_str = "Never"
+        else:
+            break_even_str = f"{rec['marginal_break_even']:.1f} days"
+
+        warn = " (!)" if rec["missing_cost"] else ""
+        profit_style = "green" if rec["additional_daily_profit"] >= 0 else "red"
+
+        # Highlight top recommendation
+        rank_style = "bold green" if i == 1 else "white"
+
+        table.add_row(
+            f"[{rank_style}]{i}[/{rank_style}]",
+            rec["building_name"],
+            f"Lv{rec['current_level']}→{rec['next_level']}",
+            rec["best_resource"],
+            f"${rec['upgrade_cost']:,.0f}{warn}",
+            f"[{profit_style}]+${rec['additional_daily_profit']:,.2f}[/{profit_style}]",
+            f"{rec['marginal_roi']:.2f}%",
+            break_even_str,
+        )
+
+    console.print(table)
+
+    if recommendations:
+        best = recommendations[0]
+        console.print(
+            f"\n[bold green]★ Recommended next upgrade:[/bold green] "
+            f"[bold]{best['building_name']}[/bold] from Level {best['current_level']} to "
+            f"Level {best['next_level']}"
+        )
+        console.print(
+            f"  Cost: [yellow]${best['upgrade_cost']:,.0f}[/yellow] → "
+            f"Adds [green]+${best['additional_daily_profit']:,.2f}/day[/green] → "
+            f"ROI: [cyan]{best['marginal_roi']:.2f}%[/cyan]"
+        )
+
+    if any(rec["missing_cost"] for rec in recommendations[:top_n]):
+        console.print(
+            "\n[yellow](!) Warning: Some upgrade costs calculated with missing "
+            "material prices (assumed $0).[/yellow]"
+        )
+
+
+def prompt_building_levels(
+    building_ids: dict[str, int],
+    buildings: list[Building],
+) -> dict[str, int]:
+    """Prompt the user to enter building levels interactively.
+
+    Args:
+        building_ids: Dict of building ID to count from API.
+        buildings: List of all Building instances.
+
+    Returns:
+        Dict of building ID to level.
+    """
+    # Create lookup from building ID to building name
+    id_to_name = {b.id: b.name for b in buildings}
+
+    console.print("\n[bold cyan]Enter building levels:[/bold cyan]")
+    console.print("(Press Enter to use default level 1)")
+    console.print()
+
+    building_levels = {}
+
+    for building_id, count in building_ids.items():
+        building_name = id_to_name.get(building_id, f"Unknown ({building_id})")
+
+        if count > 1:
+            console.print(f"[bold]{building_name}[/bold] (x{count}):")
+            for i in range(count):
+                while True:
+                    try:
+                        level_input = console.input(f"  Building #{i+1} level: ")
+                        if level_input.strip() == "":
+                            level = 1
+                        else:
+                            level = int(level_input)
+                        if level < 1:
+                            console.print("[red]Level must be at least 1[/red]")
+                            continue
+                        break
+                    except ValueError:
+                        console.print("[red]Please enter a valid number[/red]")
+
+                # Use building_id with index for multiple buildings of same type
+                building_levels[f"{building_id}_{i}"] = level
+        else:
+            while True:
+                try:
+                    level_input = console.input(f"[bold]{building_name}[/bold] level: ")
+                    if level_input.strip() == "":
+                        level = 1
+                    else:
+                        level = int(level_input)
+                    if level < 1:
+                        console.print("[red]Level must be at least 1[/red]")
+                        continue
+                    break
+                except ValueError:
+                    console.print("[red]Please enter a valid number[/red]")
+
+            building_levels[building_id] = level
+
+    return building_levels
 
 
 def display_genetic_results(
@@ -854,6 +1120,30 @@ def parse_args() -> argparse.Namespace:
         help="Penalty factor for budget overage (default: 2.0)",
     )
 
+    # analyze subcommand
+    analyze_parser = subparsers.add_parser(
+        "analyze",
+        parents=[parent_parser],
+        help="Interactive company analysis",
+        description="Analyze a player's company setup and provide upgrade recommendations",
+    )
+    analyze_parser.add_argument(
+        "-u",
+        "--user-id",
+        type=int,
+        required=True,
+        dest="user_id",
+        help="User ID to fetch company data for",
+    )
+    analyze_parser.add_argument(
+        "-n",
+        "--top-n",
+        type=int,
+        default=10,
+        dest="top_n",
+        help="Number of upgrade recommendations to show (default: 10)",
+    )
+
     args = parser.parse_args()
     
     # Set default command to 'profit' if none specified
@@ -1207,6 +1497,94 @@ def main() -> None:
                 sim_config,
                 ga,
             )
+
+        # Handle analyze command
+        if args.command == "analyze":
+            # Fetch company data
+            company_data = api.get_company(args.user_id)
+            company = company_data.get("company", {})
+
+            if not company:
+                console.print(
+                    f"[bold red]No company data found for user ID {args.user_id}[/bold red]"
+                )
+                return
+
+            # Get buildings from company data
+            company_buildings = company.get("buildings", {})
+
+            if not company_buildings:
+                console.print(
+                    "[bold red]No buildings found in company data[/bold red]"
+                )
+                return
+
+            # Prompt user for building levels
+            building_levels = prompt_building_levels(company_buildings, buildings)
+
+            # Create building ID to Building object lookup
+            id_to_building = {b.id: b for b in buildings}
+
+            # Create building resources lookup
+            building_resources: dict[str, list[Resource]] = {}
+            for building in buildings:
+                res_list = []
+                for res_name in building.produces:
+                    res = resource_by_name.get(res_name.lower())
+                    if res:
+                        res_list.append(res)
+                if res_list:
+                    building_resources[building.name] = res_list
+
+            # Calculate building stats
+            building_stats = []
+            buildings_with_levels: list[tuple[Building, int]] = []
+
+            for building_key, level in building_levels.items():
+                # Handle both single and multiple buildings of same type
+                # building_key might be "E" or "E_0", "E_1" etc.
+                if "_" in building_key:
+                    building_id = building_key.rsplit("_", 1)[0]
+                else:
+                    building_id = building_key
+
+                building = id_to_building.get(building_id)
+                if not building:
+                    console.print(
+                        f"[yellow]Warning: Unknown building ID '{building_id}'[/yellow]"
+                    )
+                    continue
+
+                building_res = building_resources.get(building.name, [])
+
+                stat = calculate_company_building_stats(
+                    building=building,
+                    level=level,
+                    resources=building_res,
+                    price_map=price_map,
+                    transport_price=transport_price,
+                    config=config,
+                    q0_price_map=q0_price_map,
+                    name_to_id=name_to_id,
+                )
+                building_stats.append(stat)
+                buildings_with_levels.append((building, level))
+
+            # Display company analysis
+            display_company_analysis(company_data, building_stats, config)
+
+            # Calculate and display upgrade recommendations
+            recommendations = calculate_upgrade_recommendations(
+                buildings_with_levels=buildings_with_levels,
+                building_resources=building_resources,
+                price_map=price_map,
+                transport_price=transport_price,
+                config=config,
+                q0_price_map=q0_price_map,
+                name_to_id=name_to_id,
+            )
+
+            display_upgrade_recommendations(recommendations, config, top_n=args.top_n)
 
     except Exception as exc:
         console.print(f"[bold red]Error fetching data: {exc}[/bold red]")
