@@ -520,3 +520,206 @@ def simulate_prospecting(
         "days_to_85": days_to_85,
         "confidence_intervals": confidence_intervals,
     }
+
+
+def calculate_company_building_stats(
+    building: Building,
+    level: int,
+    resources: list[Resource],
+    price_map: dict[int, float],
+    transport_price: float,
+    config: ProfitConfig,
+    q0_price_map: dict[int, float],
+    name_to_id: dict[str, int],
+) -> dict:
+    """Calculate statistics for a company building at a given level.
+
+    Args:
+        building: Building instance.
+        level: Current level of the building.
+        resources: List of Resource instances the building can produce.
+        price_map: Map of resource ID to price at target quality.
+        transport_price: Price per transport unit.
+        config: Profit calculation configuration.
+        q0_price_map: Map of resource ID to Q0 price for building costs.
+        name_to_id: Map of resource name (lowercase) to resource ID.
+
+    Returns:
+        Dictionary with building statistics including best resource profit and ROI.
+    """
+    # Find best resource for this building
+    best_profit = -float("inf")
+    best_resource_name = None
+    best_profit_data = None
+
+    for res in resources:
+        selling_price = price_map.get(res.id, 0)
+        if selling_price <= 0:
+            continue
+
+        profit_data = res.calculate_profit(
+            selling_price=selling_price,
+            input_prices=price_map,
+            transport_price=transport_price,
+            abundance=config.abundance,
+            admin_overhead=config.admin_overhead,
+            is_contract=config.is_contract,
+            has_robots=config.has_robots,
+        )
+
+        if profit_data["profit_per_hour"] > best_profit:
+            best_profit = profit_data["profit_per_hour"]
+            best_resource_name = res.name
+            best_profit_data = profit_data
+
+    if best_profit_data is None:
+        return {
+            "building_name": building.name,
+            "building_id": building.id,
+            "level": level,
+            "best_resource": None,
+            "hourly_profit": 0,
+            "daily_profit": 0,
+            "building_value": 0,
+            "roi_daily": 0,
+            "break_even_days": float("inf"),
+            "missing_cost": True,
+        }
+
+    # Scale profit by level
+    hourly_profit = best_profit * level
+    daily_profit = hourly_profit * 24
+
+    # Calculate building value (total investment to reach this level)
+    base_cost, missing_cost = building.calculate_construction_cost(
+        q0_price_map, name_to_id
+    )
+    if level <= 1:
+        building_value = base_cost
+    else:
+        # Total upgrade cost = base_cost * level * (level - 1) / 2
+        upgrade_cost = base_cost * level * (level - 1) / 2
+        building_value = base_cost + upgrade_cost
+
+    # Calculate ROI
+    roi_daily = 0.0
+    break_even_days = float("inf")
+    if building_value > 0:
+        roi_daily = (daily_profit / building_value) * 100
+        if daily_profit > 0:
+            break_even_days = building_value / daily_profit
+
+    return {
+        "building_name": building.name,
+        "building_id": building.id,
+        "level": level,
+        "best_resource": best_resource_name,
+        "hourly_profit": hourly_profit,
+        "daily_profit": daily_profit,
+        "building_value": building_value,
+        "roi_daily": roi_daily,
+        "break_even_days": break_even_days,
+        "missing_cost": missing_cost,
+    }
+
+
+def calculate_upgrade_recommendations(
+    buildings_with_levels: list[tuple[Building, int]],
+    building_resources: dict[str, list[Resource]],
+    price_map: dict[int, float],
+    transport_price: float,
+    config: ProfitConfig,
+    q0_price_map: dict[int, float],
+    name_to_id: dict[str, int],
+) -> list[dict]:
+    """Calculate upgrade recommendations for buildings based on marginal ROI.
+
+    The marginal ROI is the ROI of upgrading from current level to next level,
+    calculated as: (additional daily profit) / (upgrade cost) * 100.
+
+    Args:
+        buildings_with_levels: List of (Building, current_level) tuples.
+        building_resources: Map of building name to list of Resource instances.
+        price_map: Map of resource ID to price at target quality.
+        transport_price: Price per transport unit.
+        config: Profit calculation configuration.
+        q0_price_map: Map of resource ID to Q0 price for building costs.
+        name_to_id: Map of resource name (lowercase) to resource ID.
+
+    Returns:
+        List of upgrade recommendations sorted by marginal ROI descending.
+    """
+    recommendations = []
+
+    for building, current_level in buildings_with_levels:
+        resources = building_resources.get(building.name, [])
+        if not resources:
+            continue
+
+        # Find best profit per hour at level 1 (base profit)
+        best_base_profit = -float("inf")
+        best_resource_name = None
+
+        for res in resources:
+            selling_price = price_map.get(res.id, 0)
+            if selling_price <= 0:
+                continue
+
+            profit_data = res.calculate_profit(
+                selling_price=selling_price,
+                input_prices=price_map,
+                transport_price=transport_price,
+                abundance=config.abundance,
+                admin_overhead=config.admin_overhead,
+                is_contract=config.is_contract,
+                has_robots=config.has_robots,
+            )
+
+            if profit_data["profit_per_hour"] > best_base_profit:
+                best_base_profit = profit_data["profit_per_hour"]
+                best_resource_name = res.name
+
+        if best_base_profit <= -float("inf") or best_resource_name is None:
+            continue
+
+        # Calculate base construction cost
+        base_cost, missing_cost = building.calculate_construction_cost(
+            q0_price_map, name_to_id
+        )
+
+        if base_cost <= 0:
+            continue
+
+        # Marginal upgrade from current_level to current_level + 1
+        # Upgrade cost = current_level * base_cost
+        upgrade_cost = current_level * base_cost
+
+        # Additional profit gained = base_profit per hour (one level adds 1x base)
+        additional_daily_profit = best_base_profit * 24
+
+        # Marginal ROI
+        marginal_roi = 0.0
+        marginal_break_even = float("inf")
+        if upgrade_cost > 0:
+            marginal_roi = (additional_daily_profit / upgrade_cost) * 100
+            if additional_daily_profit > 0:
+                marginal_break_even = upgrade_cost / additional_daily_profit
+
+        recommendations.append(
+            {
+                "building_name": building.name,
+                "building_id": building.id,
+                "current_level": current_level,
+                "next_level": current_level + 1,
+                "best_resource": best_resource_name,
+                "upgrade_cost": upgrade_cost,
+                "additional_daily_profit": additional_daily_profit,
+                "marginal_roi": marginal_roi,
+                "marginal_break_even": marginal_break_even,
+                "missing_cost": missing_cost,
+            }
+        )
+
+    # Sort by marginal ROI descending
+    recommendations.sort(key=lambda x: x["marginal_roi"], reverse=True)
+    return recommendations
