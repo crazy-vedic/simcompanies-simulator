@@ -135,6 +135,14 @@ Use a genetic algorithm to find the optimal building configuration for maximum p
 - `--budget-penalty`: Penalty factor for exceeding budget (default: 2.0)
 - Plus inherited: `-q`, `-a`, `-r`, `-o`, `-e`
 
+#### `analyze` - Interactive company analysis
+Analyze a player's company setup and provide upgrade recommendations based on marginal ROI.
+
+**Options:**
+- `-u`, `--user-id`: User ID to fetch company data for (required)
+- `-n`, `--top-n`: Number of upgrade recommendations to show (default: 10)
+- Plus inherited: `-q`, `-a`, `-c`, `-r`, `-o`, `-e`
+
 ### Examples
 
 **View top 30 most profitable quality 0 resources with 85% abundance:**
@@ -357,7 +365,12 @@ The package can also be imported for programmatic use:
 
 ```python
 from simtools import Resource, Building, SimcoAPI
-from simtools.calculator import calculate_all_profits, ProfitConfig
+from simtools.calculator import (
+    calculate_all_profits, 
+    ProfitConfig,
+    find_best_resource_profit,
+    calculate_total_investment,
+)
 
 # Fetch data
 api = SimcoAPI(realm=0)
@@ -373,4 +386,14 @@ buildings = Building.load_all()
 # Calculate profits
 config = ProfitConfig(quality=0, abundance=90.0)
 profits = calculate_all_profits(resources, price_map, transport_price, config)
+
+# Find best resource for a building
+building_resources = [r for r in resources if r.building_name == "Mine"]
+best_resource, profit_data = find_best_resource_profit(
+    building_resources, price_map, transport_price, config
+)
+
+# Calculate total investment for a building at level 5
+building = buildings[0]
+total_cost, missing = calculate_total_investment(building, 5, q0_prices, name_to_id)
 ```

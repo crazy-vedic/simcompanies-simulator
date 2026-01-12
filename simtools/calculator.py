@@ -22,6 +22,89 @@ class ProfitConfig:
     has_robots: bool = False
 
 
+def find_best_resource_profit(
+    resources: list[Resource],
+    price_map: dict[int, float],
+    transport_price: float,
+    config: ProfitConfig,
+) -> tuple[Resource | None, dict | None]:
+    """Find the most profitable resource from a list and return its profit data.
+
+    This is a centralized helper that avoids duplicating the logic for finding
+    the best profitable resource for a building across multiple functions.
+
+    Args:
+        resources: List of Resource instances to evaluate.
+        price_map: Map of resource ID to price at the target quality.
+        transport_price: Price per transport unit.
+        config: Profit calculation configuration.
+
+    Returns:
+        Tuple of (best_resource, profit_data) or (None, None) if no valid resources.
+    """
+    best_resource = None
+    best_profit = -float("inf")
+    best_profit_data = None
+
+    for res in resources:
+        selling_price = price_map.get(res.id, 0)
+        if selling_price <= 0:
+            continue
+
+        profit_data = res.calculate_profit(
+            selling_price=selling_price,
+            input_prices=price_map,
+            transport_price=transport_price,
+            abundance=config.abundance,
+            admin_overhead=config.admin_overhead,
+            is_contract=config.is_contract,
+            has_robots=config.has_robots,
+        )
+
+        if profit_data["profit_per_hour"] > best_profit:
+            best_profit = profit_data["profit_per_hour"]
+            best_resource = res
+            best_profit_data = profit_data
+
+    return best_resource, best_profit_data
+
+
+def calculate_total_investment(
+    building: Building,
+    level: int,
+    q0_price_map: dict[int, float],
+    name_to_id: dict[str, int],
+) -> tuple[float, bool]:
+    """Calculate the total investment cost to build and upgrade to a given level.
+
+    This is a centralized helper that computes the total cost including:
+    - Base construction cost (level 1)
+    - Upgrade costs from level 1 to target level
+
+    The upgrade cost formula: step from level k to k+1 costs k * base_cost.
+    Total upgrade cost = base_cost * level * (level - 1) / 2
+
+    Args:
+        building: Building instance.
+        level: Target level (1 or higher).
+        q0_price_map: Map of resource ID to Q0 price for building costs.
+        name_to_id: Map of resource name (lowercase) to resource ID.
+
+    Returns:
+        Tuple of (total_investment, missing_cost_flag).
+    """
+    base_cost, missing_cost = building.calculate_construction_cost(
+        q0_price_map, name_to_id
+    )
+
+    if level <= 1:
+        return base_cost, missing_cost
+
+    # Total upgrade cost = base_cost * level * (level - 1) / 2
+    upgrade_cost = base_cost * level * (level - 1) / 2
+    return base_cost + upgrade_cost, missing_cost
+
+
 def calculate_all_profits(
     resources: list[Resource],
     price_map: dict[int, float],
@@ -547,30 +630,10 @@ def calculate_company_building_stats(
     Returns:
         Dictionary with building statistics including best resource profit and ROI.
     """
-    # Find best resource for this building
-    best_profit = -float("inf")
-    best_resource_name = None
-    best_profit_data = None
-
-    for res in resources:
-        selling_price = price_map.get(res.id, 0)
-        if selling_price <= 0:
-            continue
-
-        profit_data = res.calculate_profit(
-            selling_price=selling_price,
-            input_prices=price_map,
-            transport_price=transport_price,
-            abundance=config.abundance,
-            admin_overhead=config.admin_overhead,
-            is_contract=config.is_contract,
-            has_robots=config.has_robots,
-        )
-
-        if profit_data["profit_per_hour"] > best_profit:
-            best_profit = profit_data["profit_per_hour"]
-            best_resource_name = res.name
-            best_profit_data = profit_data
+    # Find best resource for this building using centralized helper
+    best_resource, best_profit_data = find_best_resource_profit(
+        resources, price_map, transport_price, config
+    )
 
     if best_profit_data is None:
         return {
@@ -587,19 +650,14 @@ def calculate_company_building_stats(
         }
 
     # Scale profit by level
+    best_profit = best_profit_data["profit_per_hour"]
     hourly_profit = best_profit * level
     daily_profit = hourly_profit * 24
 
-    # Calculate building value (total investment to reach this level)
-    base_cost, missing_cost = building.calculate_construction_cost(
-        q0_price_map, name_to_id
+    # Calculate building value using centralized helper
+    building_value, missing_cost = calculate_total_investment(
+        building, level, q0_price_map, name_to_id
     )
-    if level <= 1:
-        building_value = base_cost
-    else:
-        # Total upgrade cost = base_cost * level * (level - 1) / 2
-        upgrade_cost = base_cost * level * (level - 1) / 2
-        building_value = base_cost + upgrade_cost
 
     # Calculate ROI
     roi_daily = 0.0
@@ -613,7 +671,7 @@ def calculate_company_building_stats(
         "building_name": building.name,
         "building_id": building.id,
         "level": level,
-        "best_resource": best_resource_name,
+        "best_resource": best_resource.name if best_resource else None,
         "hourly_profit": hourly_profit,
         "daily_profit": daily_profit,
         "building_value": building_value,
@@ -656,31 +714,15 @@ def calculate_upgrade_recommendations(
         if not resources:
             continue
 
-        # Find best profit per hour at level 1 (base profit)
-        best_base_profit = -float("inf")
-        best_resource_name = None
+        # Find best profit per hour at level 1 (base profit) using centralized helper
+        best_resource, best_profit_data = find_best_resource_profit(
+            resources, price_map, transport_price, config
+        )
 
-        for res in resources:
-            selling_price = price_map.get(res.id, 0)
-            if selling_price <= 0:
-                continue
-
-            profit_data = res.calculate_profit(
-                selling_price=selling_price,
-                input_prices=price_map,
-                transport_price=transport_price,
-                abundance=config.abundance,
-                admin_overhead=config.admin_overhead,
-                is_contract=config.is_contract,
-                has_robots=config.has_robots,
-            )
-
-            if profit_data["profit_per_hour"] > best_base_profit:
-                best_base_profit = profit_data["profit_per_hour"]
-                best_resource_name = res.name
-
-        if best_base_profit <= -float("inf") or best_resource_name is None:
+        if best_profit_data is None or best_resource is None:
             continue
+
+        best_base_profit = best_profit_data["profit_per_hour"]
 
         # Calculate base construction cost
         base_cost, missing_cost = building.calculate_construction_cost(
@@ -711,7 +753,7 @@ def calculate_upgrade_recommendations(
                 "building_id": building.id,
                 "current_level": current_level,
                 "next_level": current_level + 1,
-                "best_resource": best_resource_name,
+                "best_resource": best_resource.name,
                 "upgrade_cost": upgrade_cost,
                 "additional_daily_profit": additional_daily_profit,
                 "marginal_roi": marginal_roi,
