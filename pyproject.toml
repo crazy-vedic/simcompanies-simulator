@@ -8,3 +8,11 @@ dependencies = [
     "httpx>=0.28.1",
     "rich>=14.2.0",
 ]
+
+[project.scripts]
+simtools = "simtools.cli:main"
+
+[dependency-groups]
+dev = [
+    "pyinstaller>=6.0.0",
+]
