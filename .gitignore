@@ -23,3 +23,7 @@ vwaps.json
 # Environment and logs
 .env
 *.log
+
+# PyInstaller
+*.manifest
+*.spec.bak

@@ -11,6 +11,7 @@ from rich.console import Console
 from rich.progress import Progress, SpinnerColumn, TextColumn, BarColumn, TaskProgressColumn
 from rich.table import Table
 
+from simtools import __version__
 from simtools.api import SimcoAPI
 from simtools.calculator import (
     ProfitConfig,
@@ -846,6 +847,12 @@ def parse_args() -> argparse.Namespace:
     parser = argparse.ArgumentParser(
         description="Simtools - Sim Companies calculation toolkit",
         formatter_class=argparse.RawDescriptionHelpFormatter,
+    )
+    parser.add_argument(
+        "-V",
+        "--version",
+        action="version",
+        version=f"%(prog)s {__version__}",
     )
     
     # Add common flags at top level for backwards compatibility

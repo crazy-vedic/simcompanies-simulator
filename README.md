@@ -54,12 +54,42 @@ This project uses [uv](https://github.com/astral-sh/uv) for dependency managemen
    uv sync
    ```
 
+### Pre-built Executables
+
+Pre-built standalone executables for Windows, Linux, and macOS are available in the [Releases](https://github.com/Llyfrs/simcompanies-simulator/releases) section. Download the appropriate executable for your platform and run it directly without needing Python installed.
+
+### Building Executable Locally
+
+To build a standalone executable yourself:
+
+1. Install development dependencies:
+   ```bash
+   uv sync --all-groups
+   ```
+
+2. Build the executable:
+   ```bash
+   uv run pyinstaller simtools.spec
+   ```
+
+3. The executable will be created in the `dist/` directory.
+
 ## Usage
 
 Run the script using `uv run` or directly with `python` if dependencies are installed.
 
 ```bash
 uv run main.py [command] [options]
+```
+
+### Version
+
+Check the current version:
+
+```bash
+uv run main.py --version
+# or
+uv run main.py -V
 ```
 
 ### Commands
