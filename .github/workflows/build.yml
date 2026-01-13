@@ -69,7 +69,7 @@ jobs:
         uses: softprops/action-gh-release@v2
         with:
           files: |
-            artifacts/simtools-windows-amd64.exe/simtools.exe
-            artifacts/simtools-linux-amd64/simtools
-            artifacts/simtools-macos-amd64/simtools
+            artifacts/simtools-windows-amd64.exe/simtools.exe#simtools-windows-amd64.exe
+            artifacts/simtools-linux-amd64/simtools#simtools-linux-amd64
+            artifacts/simtools-macos-amd64/simtools#simtools-macos-amd64
           generate_release_notes: true
