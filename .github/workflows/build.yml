@@ -8,9 +8,12 @@ on:
 
 jobs:
   build:
+    name: Build on ${{ matrix.os }}
+    runs-on: ${{ matrix.os }}
     permissions:
       contents: read
     strategy:
+      fail-fast: false
       matrix:
         include:
           - os: windows-latest
@@ -22,8 +25,6 @@ jobs:
           - os: macos-latest
             artifact_name: simtools
             asset_name: simtools-macos-amd64
-
-    runs-on: ${{ matrix.os }}
 
     steps:
       - name: Checkout repository
@@ -41,11 +42,13 @@ jobs:
         run: uv sync --all-groups
 
       - name: Build executable with PyInstaller
+        # ensure your spec file handles the platform differences, or rely on pyinstaller defaults
         run: uv run pyinstaller simtools.spec --noconfirm
 
       - name: Upload artifact
         uses: actions/upload-artifact@v4
         with:
+          # This name becomes the folder name when downloading
           name: ${{ matrix.asset_name }}
           path: dist/${{ matrix.artifact_name }}
 
@@ -58,18 +61,30 @@ jobs:
     
     steps:
       - name: Download all artifacts
-        uses: actions/download-artifact@v4.1.8
+        uses: actions/download-artifact@v4
         with:
           path: artifacts
 
       - name: Display structure of downloaded files
         run: ls -R artifacts
 
+      - name: Prepare release assets
+        run: |
+          # Create a clean directory for release assets
+          mkdir release_assets
+          
+          # Move and rename Windows artifact
+          # Path format: artifacts/<asset_name>/<artifact_name>
+          cp artifacts/simtools-windows-amd64.exe/simtools.exe release_assets/simtools-windows-amd64.exe
+          
+          # Move and rename Linux artifact
+          cp artifacts/simtools-linux-amd64/simtools release_assets/simtools-linux-amd64
+          
+          # Move and rename macOS artifact
+          cp artifacts/simtools-macos-amd64/simtools release_assets/simtools-macos-amd64
+
       - name: Create Release
         uses: softprops/action-gh-release@v2
         with:
-          files: |
-            artifacts/simtools-windows-amd64.exe/simtools.exe#simtools-windows-amd64.exe
-            artifacts/simtools-linux-amd64/simtools#simtools-linux-amd64
-            artifacts/simtools-macos-amd64/simtools#simtools-macos-amd64
+          files: release_assets/*
           generate_release_notes: true
