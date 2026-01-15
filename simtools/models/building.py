@@ -21,6 +21,7 @@ class Building:
 
     name: str
     id: str = ""
+    retail: bool = False
     cost: dict[str, int] = field(default_factory=dict)
     produces: list[str] = field(default_factory=list)
     level: int = 1
@@ -59,17 +60,21 @@ class Building:
         return cls(
             name=data.get("name", ""),
             id=data.get("id", ""),
+            retail=data.get("retail", False),
             cost=data.get("cost", {}),
             produces=data.get("produces", []),
             level=data.get("level", 1),
         )
 
     @classmethod
-    def load_all(cls, filepath: str | Path | None = None) -> list["Building"]:
+    def load_all(
+        cls, filepath: str | Path | None = None, include_retail: bool = False
+    ) -> list["Building"]:
         """Load all buildings from the JSON file.
 
         Args:
             filepath: Path to buildings.json. If None, uses the default data location.
+            include_retail: Whether to include retail buildings.
 
         Returns:
             List of Building instances.
@@ -85,7 +90,11 @@ class Building:
         with open(filepath, "r") as f:
             data = json.load(f)
 
-        return [cls.from_dict(b) for b in data]
+        return [
+            cls.from_dict(b)
+            for b in data
+            if include_retail or not b.get("retail", False)
+        ]
 
     def get_resources(self) -> list[Resource]:
         """Get the resolved Resource objects for this building.

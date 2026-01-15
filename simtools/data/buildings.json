@@ -21,7 +21,8 @@
       "Vegetables",
       "Cocoa",
       "Pumpkin"
-    ]
+    ],
+    "retail": false
   },
   {
     "id": "F",
@@ -38,7 +39,8 @@
       "Cows",
       "Pigs",
       "Milk"
-    ]
+    ],
+    "retail": false
   },
   {
     "id": "e",
@@ -52,7 +54,8 @@
     "produces": [
       "Steak",
       "Sausages"
-    ]
+    ],
+    "retail": false
   },
   {
     "id": "i",
@@ -67,7 +70,8 @@
       "Coffee Powder",
       "Flour",
       "Fodder"
-    ]
+    ],
+    "retail": false
   },
   {
     "id": "6",
@@ -83,7 +87,8 @@
       "Orange Juice",
       "Apple Cider",
       "Ginger Beer"
-    ]
+    ],
+    "retail": false
   },
   {
     "id": "k",
@@ -106,7 +111,8 @@
       "Ramadan Sweets",
       "Chocolate Icecream",
       "Apple Icecream"
-    ]
+    ],
+    "retail": false
   },
   {
     "id": "j",
@@ -121,7 +127,8 @@
       "Bread",
       "Apple Pie",
       "Dough"
-    ]
+    ],
+    "retail": false
   },
   {
     "id": "m",
@@ -141,7 +148,8 @@
       "Salad",
       "Samosa",
       "Pumpkin Soup"
-    ]
+    ],
+    "retail": false
   },
   {
     "id": "o",
@@ -156,7 +164,8 @@
       "Reinforced concrete",
       "Bricks",
       "Cement"
-    ]
+    ],
+    "retail": false
   },
   {
     "id": "x",
@@ -172,7 +181,8 @@
       "Planks",
       "Windows",
       "Tools"
-    ]
+    ],
+    "retail": false
   },
   {
     "id": "Q",
@@ -187,7 +197,8 @@
       "Sand",
       "Clay",
       "Limestone"
-    ]
+    ],
+    "retail": false
   },
   {
     "id": "T",
@@ -209,7 +220,8 @@
       "Luxury Watch",
       "Necklace",
       "Witch Costume"
-    ]
+    ],
+    "retail": false
   },
   {
     "id": "E",
@@ -222,7 +234,8 @@
     },
     "produces": [
       "Power"
-    ]
+    ],
+    "retail": false
   },
   {
     "id": "O",
@@ -236,7 +249,8 @@
     "produces": [
       "Crude oil",
       "Methane"
-    ]
+    ],
+    "retail": false
   },
   {
     "id": "R",
@@ -253,7 +267,8 @@
       "Plastic",
       "Carbon fibers",
       "Rocket fuel"
-    ]
+    ],
+    "retail": false
   },
   {
     "id": "L",
@@ -278,7 +293,8 @@
       "High Grade E-Comps",
       "Robots",
       "Jack O'Lantern"
-    ]
+    ],
+    "retail": false
   },
   {
     "id": "1",
@@ -299,7 +315,8 @@
       "Luxury Car",
       "Truck",
       "Bulldozer"
-    ]
+    ],
+    "retail": false
   },
   {
     "id": "7",
@@ -318,7 +335,8 @@
       "Sub-orbital 2nd Stage",
       "Orbital Booster",
       "Starship"
-    ]
+    ],
+    "retail": false
   },
   {
     "id": "D",
@@ -336,7 +354,8 @@
       "Rocket Engine",
       "Ion Drive",
       "Jet Engine"
-    ]
+    ],
+    "retail": false
   },
   {
     "id": "0",
@@ -351,7 +370,8 @@
       "Jumbo Jet",
       "Luxury Jet",
       "Single Engine Plane"
-    ]
+    ],
+    "retail": false
   },
   {
     "id": "8",
@@ -368,7 +388,8 @@
       "Attitude control",
       "Quadcopter",
       "Satellite"
-    ]
+    ],
+    "retail": false
   },
   {
     "id": "W",
@@ -381,7 +402,8 @@
     },
     "produces": [
       "Water"
-    ]
+    ],
+    "retail": false
   },
   {
     "id": "S",
@@ -394,7 +416,8 @@
     },
     "produces": [
       "Transport"
-    ]
+    ],
+    "retail": false
   },
   {
     "id": "R",
@@ -411,7 +434,8 @@
       "Plastic",
       "Carbon fibers",
       "Rocket fuel"
-    ]
+    ],
+    "retail": false
   },
   {
     "id": "M",
@@ -427,7 +451,8 @@
       "Bauxite",
       "Iron Ore",
       "Gold Ore"
-    ]
+    ],
+    "retail": false
   },
   {
     "id": "Y",
@@ -448,7 +473,8 @@
       "Golden Bars",
       "Carbon Composite",
       "Xmas Ornament"
-    ]
+    ],
+    "retail": false
   },
   {
     "id": "g",
@@ -461,7 +487,8 @@
     },
     "produces": [
       "Construction units"
-    ]
+    ],
+    "retail": false
   },
   {
     "id": "9",
@@ -475,7 +502,8 @@
     "produces": [
       "Sub-orbital rocket",
       "BFR"
-    ]
+    ],
+    "retail": false
   },
   {
     "id": "s",
@@ -488,7 +516,8 @@
     },
     "produces": [
       "Software"
-    ]
+    ],
+    "retail": false
   },
   {
     "id": "f",
@@ -501,7 +530,8 @@
     },
     "produces": [
       "Fashion research"
-    ]
+    ],
+    "retail": false
   },
   {
     "id": "q",
@@ -514,7 +544,8 @@
     },
     "produces": [
       "Recipes"
-    ]
+    ],
+    "retail": false
   },
   {
     "id": "b",
@@ -527,7 +558,8 @@
     },
     "produces": [
       "Breeding research"
-    ]
+    ],
+    "retail": false
   },
   {
     "id": "c",
@@ -541,7 +573,8 @@
     "produces": [
       "Chemistry research",
       "Materials research"
-    ]
+    ],
+    "retail": false
   },
   {
     "id": "p",
@@ -554,7 +587,8 @@
     },
     "produces": [
       "Plant research"
-    ]
+    ],
+    "retail": false
   },
   {
     "id": "l",
@@ -567,7 +601,8 @@
     },
     "produces": [
       "Aerospace research"
-    ]
+    ],
+    "retail": false
   },
   {
     "id": "a",
@@ -580,7 +615,8 @@
     },
     "produces": [
       "Automotive research"
-    ]
+    ],
+    "retail": false
   },
   {
     "id": "h",
@@ -595,6 +631,193 @@
       "Energy research",
       "Mining research",
       "Electronics research"
-    ]
-  }
+    ],
+    "retail": false
+  },
+  {
+    "id": "G",
+    "name": "Grocery store",
+    "cost": {
+      "Bricks": 165,
+      "Steel": 12,
+      "Construction units": 2,
+      "Planks": 48
+    },
+    "produces": [
+      "Apples",
+      "Oranges",
+      "Grapes",
+      "Steak",
+      "Sausages",
+      "Eggs",
+      "Coffee powder",
+      "Apple pie",
+      "Orange juice",
+      "Apple cider",
+      "Ginger beer",
+      "Cheese",
+      "Frozen pizza",
+      "Chocolate",
+      "Easter bunny",
+      "Ramadan sweets"
+    ],
+    "retail": true
+  },
+  {
+    "id": "d",
+    "name": "Hardware store",
+    "cost": {
+      "Bricks": 220,
+      "Steel": 16,
+      "Construction units": 4,
+      "Planks": 64
+    },
+    "produces": [
+      "Bricks",
+      "Cement",
+      "Planks",
+      "Windows",
+      "Tools"
+    ],
+    "retail": true
+  },
+  {
+    "id": "H",
+    "name": "Fashion store",
+    "cost": {
+      "Bricks": 275,
+      "Steel": 20,
+      "Construction units": 5,
+      "Planks": 80
+    },
+    "produces": [
+      "Underwear",
+      "Gloves",
+      "Dress",
+      "Stiletto heel",
+      "Handbags",
+      "Sneakers",
+      "Luxury watch",
+      "Necklace"
+    ],
+    "retail": true
+  },
+  {
+    "id": "A",
+    "name": "Gas station",
+    "cost": {
+      "Bricks": 385,
+      "Steel": 28,
+      "Construction units": 7,
+      "Planks": 112
+    },
+    "produces": [
+      "Petrol",
+      "Diesel"
+    ],
+    "retail": true
+  },
+  {
+    "id": "C",
+    "name": "Electronics store",
+    "cost": {
+      "Bricks": 275,
+      "Steel": 20,
+      "Construction units": 5,
+      "Planks": 80
+    },
+    "produces": [
+      "Smart phones",
+      "Tablets",
+      "Laptops",
+      "Monitors",
+      "Televisions",
+      "Quadcopter"
+    ],
+    "retail": true
+  },
+  {
+    "id": "2",
+    "name": "Car dealership",
+    "cost": {
+      "Bricks": 330,
+      "Steel": 24,
+      "Construction units": 6,
+      "Planks": 96
+    },
+    "produces": [
+      "Economy e-car",
+      "Luxury e-car",
+      "Economy car",
+      "Luxury car",
+      "Truck"
+    ],
+    "retail": true
+  },
+  {
+    "id": "B",
+    "name": "Sales offices",
+    "cost": {
+      "Bricks": 990,
+      "Steel": 72,
+      "Construction units": 18,
+      "Planks": 288
+    },
+    "produces": [
+      "Sub-orbital rocket",
+      "BFR",
+      "Jumbo jet",
+      "Luxury jet",
+      "Single engine plane",
+      "Satellite"
+    ],
+    "retail": true
+  },
+  {
+    "id": "t",
+    "name": "Halloween market",
+    "cost": {
+      "Bricks": 220,
+      "Steel": 16,
+      "Construction units": 4,
+      "Planks": 64
+    },
+    "produces": [
+      "Pumpkin",
+      "Jack o'lantern",
+      "Witch costume"
+    ],
+    "retail": true
+},
+{
+  "id": "u",
+  "name": "Xmas market",
+  "cost": {
+    "Bricks": 275,
+    "Steel": 20,
+    "Construction units": 5,
+    "Planks": 80
+  },
+  "produces": [
+    "Xmas crackers",
+    "Xmas ornament",
+    "Tree"
+  ],
+  "retail": true
+},
+{
+  "id": "z",
+  "name": "Beach market",
+  "cost": {
+    "Bricks": 165,
+    "Steel": 12,
+    "Construction units": 3,
+    "Planks": 48
+  },
+  "produces": [
+    "Chocolate icecream",
+    "Apple icecream"
+  ],
+  "retail": true
+}
 ]
