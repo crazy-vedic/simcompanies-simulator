@@ -16,9 +16,9 @@ class MarketData:
     - Resource name to ID mapping
     
     Attributes:
-        vwaps: Nested dict mapping resource_id -> {quality -> price}
-        transport_price: Price per transport unit (Q0)
-        name_to_id: Map of resource name (lowercase) to resource ID
+        vwaps: Nested dict mapping resource_id (int) -> {quality (int) -> price (float)}
+        transport_price: Price per transport unit at Q0 (float)
+        name_to_id: Map of resource name (str, lowercase) to resource ID (int)
     """
     
     vwaps: dict[int, dict[int, float]]
