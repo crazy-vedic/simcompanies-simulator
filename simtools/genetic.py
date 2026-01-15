@@ -277,17 +277,19 @@ class GeneticAlgorithm:
                     
                     building_levels_per_unit = retail_data.get("buildingLevelsNeededPerUnitPerHour", 0)
                     sales_wages = retail_data.get("salesWages", 0)
+                    modeled_wages = retail_data.get("modeledStoreWages", 0)
                     retail_price = retail_data.get("averagePrice", 0)
                     modeled_units = retail_data.get("modeledUnitsSoldAnHour", 0)
+                    modeled_production_cost = retail_data.get("modeledProductionCostPerUnit", 1.0)
                     
                     if retail_price <= 0:
                         continue
                     
                     # Calculate units that can be sold this hour
                     # Note: sales_speed_bonus is not tracked in genetic algorithm for simplicity
-                    # Use modeled units if available, otherwise calculate from building levels
-                    if modeled_units > 0:
-                        units_to_sell = modeled_units * level
+                    # Use modeled units adjusted by production cost
+                    if modeled_units > 0 and modeled_production_cost > 0:
+                        units_to_sell = (modeled_units / modeled_production_cost) * level
                     elif building_levels_per_unit > 0:
                         units_to_sell = (1.0 / building_levels_per_unit) * level
                     else:
@@ -317,7 +319,7 @@ class GeneticAlgorithm:
                         revenue = retail_price * units_sold
                         total_retail_sales += revenue
                         
-                        # Calculate wages
+                        # Calculate wages - always use salesWages with admin overhead
                         wages = sales_wages * level * (1.0 + self.admin_overhead / 100.0)
                         total_retail_wages += wages
                 else:

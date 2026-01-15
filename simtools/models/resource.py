@@ -263,10 +263,13 @@ class Resource:
             "buildingLevelsNeededPerUnitPerHour", 0
         )
         sales_wages = retail_data.get("salesWages", 0)
+        modeled_wages = retail_data.get("modeledStoreWages", 0)
         retail_price = retail_data.get("averagePrice", 0)
+        saturation = retail_data.get("saturation", 1.0)
+        modeled_production_cost = retail_data.get("modeledProductionCostPerUnit", 1.0)
         
         # Use modeledUnitsSoldAnHour if available, otherwise calculate
-        # The modeledUnitsSoldAnHour represents units sold per hour at level 1 with no bonuses
+        # The units are adjusted by modeledProductionCostPerUnit
         modeled_units = retail_data.get("modeledUnitsSoldAnHour", 0)
 
         if retail_price <= 0:
@@ -286,10 +289,10 @@ class Resource:
             }
 
         # Calculate units sold per hour
-        # Use modeled units if available, otherwise fall back to calculation
-        if modeled_units > 0:
-            # Use the modeled value as base, apply building level and sales speed bonus
-            units_sold_per_hour = modeled_units * building_level * (1.0 + sales_speed_bonus)
+        # Use modeled units adjusted by production cost factor
+        if modeled_units > 0 and modeled_production_cost > 0:
+            # Adjust modeled units by production cost, then apply building level and sales speed bonus
+            units_sold_per_hour = (modeled_units / modeled_production_cost) * building_level * (1.0 + sales_speed_bonus)
         elif building_levels_per_unit > 0:
             # Fall back to calculation if no modeled value
             units_sold_per_hour = (
@@ -314,7 +317,7 @@ class Resource:
             }
 
         # Calculate wages per hour
-        # wages = salesWages * building_level * (1 + admin_overhead / 100)
+        # Always use salesWages with admin overhead (API doesn't know user's overhead)
         wages_per_hour = sales_wages * building_level * (1.0 + admin_overhead / 100.0)
 
         # Calculate revenue less wages per unit
