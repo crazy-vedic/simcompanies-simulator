@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import math
 from dataclasses import dataclass, field
 from typing import TYPE_CHECKING
 
@@ -259,18 +260,10 @@ class Resource:
             }
 
         # Extract retail data
-        building_levels_per_unit = retail_data.get(
-            "buildingLevelsNeededPerUnitPerHour", 0
-        )
         sales_wages = retail_data.get("salesWages", 0)
-        modeled_wages = retail_data.get("modeledStoreWages", 0)
         retail_price = retail_data.get("averagePrice", 0)
-        saturation = retail_data.get("saturation", 1.0)
-        modeled_production_cost = retail_data.get("modeledProductionCostPerUnit", 1.0)
-        
-        # Use modeledUnitsSoldAnHour if available, otherwise calculate
-        # The units are adjusted by modeledProductionCostPerUnit
         modeled_units = retail_data.get("modeledUnitsSoldAnHour", 0)
+        saturation = retail_data.get("saturation", 1.0)
 
         if retail_price <= 0:
             return {
@@ -289,14 +282,18 @@ class Resource:
             }
 
         # Calculate units sold per hour
-        # Use modeled units adjusted by production cost factor
-        if modeled_units > 0 and modeled_production_cost > 0:
-            # Adjust modeled units by production cost, then apply building level and sales speed bonus
-            units_sold_per_hour = (modeled_units / modeled_production_cost) * building_level * (1.0 + sales_speed_bonus)
-        elif building_levels_per_unit > 0:
-            # Fall back to calculation if no modeled value
+        # Use modeledUnitsSoldAnHour adjusted by market saturation.
+        # The formula accounts for market saturation using a logarithmic dampening:
+        # - At saturation <= 1.0 (balanced/undersupplied): units = modeledUnitsSoldAnHour (full rate)
+        # - At saturation > 1.0 (oversupply): units = modeledUnitsSoldAnHour / (1 + ln(saturation))
+        # This reduces sales logarithmically as saturation increases above 1.0
+        if modeled_units > 0:
+            if saturation > 1.0:
+                saturation_factor = 1.0 + math.log(saturation)
+            else:
+                saturation_factor = 1.0
             units_sold_per_hour = (
-                (1.0 / building_levels_per_unit)
+                (modeled_units / saturation_factor)
                 * building_level
                 * (1.0 + sales_speed_bonus)
             )
