@@ -9,6 +9,7 @@ from typing import TYPE_CHECKING
 if TYPE_CHECKING:
     from simtools.models.building import Building
     from simtools.models.resource import Resource
+    from simtools.models.market import MarketData
 
 
 @dataclass
@@ -24,8 +25,8 @@ class ProfitConfig:
 
 def find_best_resource_profit(
     resources: list[Resource],
-    price_map: dict[int, float],
-    transport_price: float,
+    market: MarketData,
+    quality: int,
     config: ProfitConfig,
 ) -> tuple[Resource | None, dict | None]:
     """Find the most profitable resource from a list and return its profit data.
@@ -35,8 +36,8 @@ def find_best_resource_profit(
 
     Args:
         resources: List of Resource instances to evaluate.
-        price_map: Map of resource ID to price at the target quality.
-        transport_price: Price per transport unit.
+        market: MarketData instance containing prices and transport info.
+        quality: Quality level for prices.
         config: Profit calculation configuration.
 
     Returns:
@@ -47,14 +48,14 @@ def find_best_resource_profit(
     best_profit_data = None
 
     for res in resources:
-        selling_price = price_map.get(res.id, 0)
+        selling_price = market.get_price(res.id, quality)
         if selling_price <= 0:
             continue
 
         profit_data = res.calculate_profit(
             selling_price=selling_price,
-            input_prices=price_map,
-            transport_price=transport_price,
+            market=market,
+            quality=quality,
             abundance=config.abundance,
             admin_overhead=config.admin_overhead,
             is_contract=config.is_contract,
@@ -72,8 +73,7 @@ def find_best_resource_profit(
 def calculate_total_investment(
     building: Building,
     level: int,
-    q0_price_map: dict[int, float],
-    name_to_id: dict[str, int],
+    market: MarketData,
 ) -> tuple[float, bool]:
     """Calculate the total investment cost to build and upgrade to a given level.
 
@@ -87,15 +87,12 @@ def calculate_total_investment(
     Args:
         building: Building instance.
         level: Target level (1 or higher).
-        q0_price_map: Map of resource ID to Q0 price for building costs.
-        name_to_id: Map of resource name (lowercase) to resource ID.
+        market: MarketData instance containing Q0 prices and name_to_id mapping.
 
     Returns:
         Tuple of (total_investment, missing_cost_flag).
     """
-    base_cost, missing_cost = building.calculate_construction_cost(
-        q0_price_map, name_to_id
-    )
+    base_cost, missing_cost = building.calculate_construction_cost(market)
 
     if level <= 1:
         return base_cost, missing_cost
@@ -107,16 +104,16 @@ def calculate_total_investment(
 
 def calculate_all_profits(
     resources: list[Resource],
-    price_map: dict[int, float],
-    transport_price: float,
+    market: MarketData,
+    quality: int,
     config: ProfitConfig,
 ) -> list[dict]:
     """Calculate profits for all resources.
 
     Args:
         resources: List of Resource instances to calculate profits for.
-        price_map: Map of resource ID to price at the target quality.
-        transport_price: Price per transport unit.
+        market: MarketData instance containing prices and transport info.
+        quality: Quality level for prices.
         config: Profit calculation configuration.
 
     Returns:
@@ -125,14 +122,14 @@ def calculate_all_profits(
     profits = []
 
     for res in resources:
-        selling_price = price_map.get(res.id, 0)
+        selling_price = market.get_price(res.id, quality)
         if selling_price == 0:
             continue
 
         profit_data = res.calculate_profit(
             selling_price=selling_price,
-            input_prices=price_map,
-            transport_price=transport_price,
+            market=market,
+            quality=quality,
             abundance=config.abundance,
             admin_overhead=config.admin_overhead,
             is_contract=config.is_contract,
@@ -148,16 +145,14 @@ def calculate_all_profits(
 def calculate_building_roi(
     buildings: list[Building],
     profits: list[dict],
-    q0_price_map: dict[int, float],
-    name_to_id: dict[str, int],
+    market: MarketData,
 ) -> list[dict]:
     """Calculate ROI for buildings based on their best performing resource.
 
     Args:
         buildings: List of Building instances.
         profits: List of profit dictionaries from calculate_all_profits.
-        q0_price_map: Map of resource ID to Q0 price for building costs.
-        name_to_id: Map of resource name (lowercase) to resource ID.
+        market: MarketData instance containing Q0 prices and name_to_id mapping.
 
     Returns:
         List of ROI dictionaries sorted by ROI descending.
@@ -186,9 +181,7 @@ def calculate_building_roi(
             continue
 
         # Calculate building cost
-        total_cost, missing_cost = building.calculate_construction_cost(
-            q0_price_map, name_to_id
-        )
+        total_cost, missing_cost = building.calculate_construction_cost(market)
 
         daily_profit = best_profit * 24
 
@@ -220,8 +213,7 @@ def calculate_building_roi(
 def calculate_level_roi(
     building: Building,
     best_profit_data: dict,
-    q0_price_map: dict[int, float],
-    name_to_id: dict[str, int],
+    market: MarketData,
     max_level: int = 20,
     step_mode: bool = False,
 ) -> list[dict]:
@@ -230,8 +222,7 @@ def calculate_level_roi(
     Args:
         building: The Building instance.
         best_profit_data: Profit data for the best resource at level 1.
-        q0_price_map: Map of resource ID to Q0 price for building costs.
-        name_to_id: Map of resource name (lowercase) to resource ID.
+        market: MarketData instance containing Q0 prices and name_to_id mapping.
         max_level: Maximum level to calculate up to.
         step_mode: If True, calculate ROI for each step L -> L+1 based on 
                    that step's cost and the additional profit gained.
@@ -239,7 +230,7 @@ def calculate_level_roi(
     Returns:
         List of ROI dictionaries for each level/step.
     """
-    base_cost, missing_cost = building.calculate_construction_cost(q0_price_map, name_to_id)
+    base_cost, missing_cost = building.calculate_construction_cost(market)
     base_profit = best_profit_data["profit_per_hour"]
 
     # Ensure building is treated as level 1 for starting point
@@ -267,7 +258,7 @@ def calculate_level_roi(
                 display_label = f"Lv{level-1}→{level}"
         else:
             # Total investment to reach this level
-            upgrade_cost, _ = building.calculate_upgrade_cost(q0_price_map, level, name_to_id)
+            upgrade_cost, _ = building.calculate_upgrade_cost(market, level)
             cost = base_cost + upgrade_cost
             gained_daily_profit = base_profit * 24 * level
             display_label = str(level)
@@ -301,10 +292,8 @@ def calculate_lifecycle_roi(
     building: Building,
     resource: Resource,
     profit_config: ProfitConfig,
-    current_prices: dict[int, float],
-    q0_prices: dict[int, float],
-    transport_price: float,
-    name_to_id: dict[str, int],
+    market: MarketData,
+    quality: int,
     start_abundance: float,
     end_abundance: float = 0.85,
     decay_rate: float = 0.00032,
@@ -323,10 +312,8 @@ def calculate_lifecycle_roi(
         building: Building instance.
         resource: Resource instance.
         profit_config: ProfitConfig for parameters like overhead, robots.
-        current_prices: Price map for revenue and inputs.
-        q0_prices: Price map for construction costs.
-        transport_price: Price per transport unit.
-        name_to_id: Resource name to ID map.
+        market: MarketData instance containing prices and transport info.
+        quality: Quality level for prices.
         start_abundance: Starting abundance (0.0 to 1.0).
         end_abundance: Ending abundance target (default 0.85).
         decay_rate: Daily abundance decay rate (default 0.00032).
@@ -340,11 +327,11 @@ def calculate_lifecycle_roi(
         return []
 
     # Calculate base profit metrics at 100% abundance and 0%
-    selling_price = current_prices.get(resource.id, 0)
+    selling_price = market.get_price(resource.id, quality)
     p_100 = resource.calculate_profit(
         selling_price=selling_price,
-        input_prices=current_prices,
-        transport_price=transport_price,
+        market=market,
+        quality=quality,
         abundance=100.0,
         admin_overhead=profit_config.admin_overhead,
         is_contract=profit_config.is_contract,
@@ -352,8 +339,8 @@ def calculate_lifecycle_roi(
     )
     p_0 = resource.calculate_profit(
         selling_price=selling_price,
-        input_prices=current_prices,
-        transport_price=transport_price,
+        market=market,
+        quality=quality,
         abundance=0.0,
         admin_overhead=profit_config.admin_overhead,
         is_contract=profit_config.is_contract,
@@ -364,7 +351,7 @@ def calculate_lifecycle_roi(
     hourly_variable_profit_at_100 = p_100["profit_per_hour"] + hourly_fixed_cost
     
     # Base construction cost (Level 1)
-    base_cost, missing_cost = building.calculate_construction_cost(q0_prices, name_to_id)
+    base_cost, missing_cost = building.calculate_construction_cost(market)
     
     results = []
     
@@ -439,8 +426,8 @@ def compare_market_vs_contract(
     resource: Resource,
     market_price: float,
     contract_price: float,
-    input_prices: dict[int, float],
-    transport_price: float,
+    market: MarketData,
+    quality: int,
     config: ProfitConfig,
 ) -> dict:
     """Compare selling on market vs selling via contract with custom price.
@@ -449,8 +436,8 @@ def compare_market_vs_contract(
         resource: Resource instance to compare.
         market_price: Market price from VWAP.
         contract_price: User-defined contract price per unit.
-        input_prices: Map of resource ID to price for input materials.
-        transport_price: Price per transport unit.
+        market: MarketData instance containing prices and transport info.
+        quality: Quality level for input prices.
         config: Profit calculation configuration.
 
     Returns:
@@ -465,8 +452,8 @@ def compare_market_vs_contract(
     # Calculate market mode (4% fee, 100% transport)
     market_data = resource.calculate_profit(
         selling_price=market_price,
-        input_prices=input_prices,
-        transport_price=transport_price,
+        market=market,
+        quality=quality,
         abundance=config.abundance,
         admin_overhead=config.admin_overhead,
         is_contract=False,
@@ -476,8 +463,8 @@ def compare_market_vs_contract(
     # Calculate contract mode (0% fee, 50% transport) with custom price
     contract_data = resource.calculate_profit(
         selling_price=contract_price,
-        input_prices=input_prices,
-        transport_price=transport_price,
+        market=market,
+        quality=quality,
         abundance=config.abundance,
         admin_overhead=config.admin_overhead,
         is_contract=True,
@@ -609,11 +596,9 @@ def calculate_company_building_stats(
     building: Building,
     level: int,
     resources: list[Resource],
-    price_map: dict[int, float],
-    transport_price: float,
+    market: MarketData,
+    quality: int,
     config: ProfitConfig,
-    q0_price_map: dict[int, float],
-    name_to_id: dict[str, int],
 ) -> dict:
     """Calculate statistics for a company building at a given level.
 
@@ -621,18 +606,16 @@ def calculate_company_building_stats(
         building: Building instance.
         level: Current level of the building.
         resources: List of Resource instances the building can produce.
-        price_map: Map of resource ID to price at target quality.
-        transport_price: Price per transport unit.
+        market: MarketData instance containing prices and transport info.
+        quality: Quality level for prices.
         config: Profit calculation configuration.
-        q0_price_map: Map of resource ID to Q0 price for building costs.
-        name_to_id: Map of resource name (lowercase) to resource ID.
 
     Returns:
         Dictionary with building statistics including best resource profit and ROI.
     """
     # Find best resource for this building using centralized helper
     best_resource, best_profit_data = find_best_resource_profit(
-        resources, price_map, transport_price, config
+        resources, market, quality, config
     )
 
     if best_profit_data is None:
@@ -656,7 +639,7 @@ def calculate_company_building_stats(
 
     # Calculate building value using centralized helper
     building_value, missing_cost = calculate_total_investment(
-        building, level, q0_price_map, name_to_id
+        building, level, market
     )
 
     # Calculate ROI
@@ -684,11 +667,9 @@ def calculate_company_building_stats(
 def calculate_upgrade_recommendations(
     buildings_with_levels: list[tuple[Building, int]],
     building_resources: dict[str, list[Resource]],
-    price_map: dict[int, float],
-    transport_price: float,
+    market: MarketData,
+    quality: int,
     config: ProfitConfig,
-    q0_price_map: dict[int, float],
-    name_to_id: dict[str, int],
 ) -> list[dict]:
     """Calculate upgrade recommendations for buildings based on marginal ROI.
 
@@ -698,11 +679,9 @@ def calculate_upgrade_recommendations(
     Args:
         buildings_with_levels: List of (Building, current_level) tuples.
         building_resources: Map of building name to list of Resource instances.
-        price_map: Map of resource ID to price at target quality.
-        transport_price: Price per transport unit.
+        market: MarketData instance containing prices and transport info.
+        quality: Quality level for prices.
         config: Profit calculation configuration.
-        q0_price_map: Map of resource ID to Q0 price for building costs.
-        name_to_id: Map of resource name (lowercase) to resource ID.
 
     Returns:
         List of upgrade recommendations sorted by marginal ROI descending.
@@ -716,7 +695,7 @@ def calculate_upgrade_recommendations(
 
         # Find best profit per hour at level 1 (base profit) using centralized helper
         best_resource, best_profit_data = find_best_resource_profit(
-            resources, price_map, transport_price, config
+            resources, market, quality, config
         )
 
         if best_profit_data is None or best_resource is None:
@@ -725,9 +704,7 @@ def calculate_upgrade_recommendations(
         best_base_profit = best_profit_data["profit_per_hour"]
 
         # Calculate base construction cost
-        base_cost, missing_cost = building.calculate_construction_cost(
-            q0_price_map, name_to_id
-        )
+        base_cost, missing_cost = building.calculate_construction_cost(market)
 
         if base_cost <= 0:
             continue

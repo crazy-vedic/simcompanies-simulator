@@ -109,33 +109,28 @@ class Building:
                 self._resources.append(resource)
 
     def calculate_construction_cost(
-        self, prices: dict[str, float], name_to_id: dict[str, int] | None = None
+        self, market: "MarketData"
     ) -> tuple[float, bool]:
         """Calculate the total construction cost for this building.
 
         Args:
-            prices: Map of resource ID to price (Q0 prices).
-            name_to_id: Optional map of resource name (lowercase) to resource ID.
-                        If provided, prices is expected to be keyed by ID.
+            market: MarketData instance containing Q0 prices and name_to_id mapping.
 
         Returns:
             Tuple of (total_cost, missing_price_flag).
         """
+        from simtools.models.market import MarketData
+        
         total_cost = 0.0
         missing_price = False
 
         for material_name, amount in self.cost.items():
-            if name_to_id is not None:
-                # Look up by ID
-                mat_id = name_to_id.get(material_name.lower())
-                if mat_id:
-                    price = prices.get(mat_id, 0)
-                else:
-                    price = 0
-                    missing_price = True
+            mat_id = market.name_to_id.get(material_name.lower())
+            if mat_id:
+                price = market.get_price(mat_id, quality=0)
             else:
-                # Prices keyed by name
-                price = prices.get(material_name.lower(), 0)
+                price = 0
+                missing_price = True
 
             if price == 0:
                 missing_price = True
@@ -145,9 +140,8 @@ class Building:
 
     def calculate_upgrade_cost(
         self,
-        prices: dict[str, float],
+        market: "MarketData",
         target_level: int,
-        name_to_id: dict[str, int] | None = None,
     ) -> tuple[float, bool]:
         """Calculate the cost to upgrade this building to a target level.
 
@@ -155,17 +149,18 @@ class Building:
         Total cost is the sum of costs for each step.
 
         Args:
-            prices: Map of resource ID to price (Q0 prices).
+            market: MarketData instance containing Q0 prices and name_to_id mapping.
             target_level: Level to upgrade to.
-            name_to_id: Optional map of resource name (lowercase) to resource ID.
 
         Returns:
             Tuple of (total_upgrade_cost, missing_price_flag).
         """
+        from simtools.models.market import MarketData
+        
         if target_level <= self.level:
             return 0.0, False
 
-        base_cost, missing_price = self.calculate_construction_cost(prices, name_to_id)
+        base_cost, missing_price = self.calculate_construction_cost(market)
         
         total_upgrade_cost = 0.0
         # Calculate cost for each step: current -> current+1, ..., target-1 -> target
