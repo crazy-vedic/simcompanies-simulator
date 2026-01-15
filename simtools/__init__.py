@@ -10,7 +10,8 @@ except Exception:
 
 from simtools.models.resource import Resource
 from simtools.models.building import Building
+from simtools.models.market import MarketData
 from simtools.api import SimcoAPI
 
-__all__ = ["Resource", "Building", "SimcoAPI", "__version__"]
+__all__ = ["Resource", "Building", "MarketData", "SimcoAPI", "__version__"]
 

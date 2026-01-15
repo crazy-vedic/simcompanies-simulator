@@ -16,6 +16,7 @@ from simtools.calculator import (
 if TYPE_CHECKING:
     from simtools.models.building import Building
     from simtools.models.resource import Resource
+    from simtools.models.market import MarketData
 
 
 @dataclass
@@ -94,10 +95,8 @@ class GeneticAlgorithm:
         config: SimulationConfig,
         buildings: list[Building],
         resources: list[Resource],
-        price_map: dict[int, float],
-        q0_price_map: dict[int, float],
-        transport_price: float,
-        name_to_id: dict[str, int],
+        market: MarketData,
+        quality: int = 0,
         abundance: float = 90.0,
         admin_overhead: float = 0.0,
         has_robots: bool = False,
@@ -108,10 +107,8 @@ class GeneticAlgorithm:
             config: Simulation configuration.
             buildings: List of available building types.
             resources: List of all resources.
-            price_map: Map of resource ID to price at target quality.
-            q0_price_map: Map of resource ID to Q0 price for building costs.
-            transport_price: Price per transport unit.
-            name_to_id: Map of resource name (lowercase) to resource ID.
+            market: MarketData instance containing prices and transport info.
+            quality: Quality level for prices.
             abundance: Abundance percentage for mine/well resources.
             admin_overhead: Administrative overhead percentage.
             has_robots: Whether robots are used (3% wage reduction).
@@ -119,10 +116,8 @@ class GeneticAlgorithm:
         self.config = config
         self.buildings = buildings
         self.resources = resources
-        self.price_map = price_map
-        self.q0_price_map = q0_price_map
-        self.transport_price = transport_price
-        self.name_to_id = name_to_id
+        self.market = market
+        self.quality = quality
         self.abundance = abundance
         self.admin_overhead = admin_overhead
         self.has_robots = has_robots
@@ -148,7 +143,7 @@ class GeneticAlgorithm:
             b for b in buildings
             if b.name in self.building_to_resources
             and any(
-                self.price_map.get(r.id, 0) > 0
+                market.get_price(r.id, quality) > 0
                 for r in self.building_to_resources[b.name]
             )
         ]
@@ -172,7 +167,7 @@ class GeneticAlgorithm:
         
         # Use centralized helper for consistent calculation
         total_cost, _ = calculate_total_investment(
-            building, level, self.q0_price_map, self.name_to_id
+            building, level, self.market
         )
         return total_cost
     
@@ -211,7 +206,7 @@ class GeneticAlgorithm:
             has_robots=self.has_robots,
         )
         best_resource, _ = find_best_resource_profit(
-            resources, self.price_map, self.transport_price, config
+            resources, self.market, self.quality, config
         )
         return best_resource
     
@@ -268,7 +263,7 @@ class GeneticAlgorithm:
                         to_buy = required - available
                         inventory[input_id] = 0.0
                         
-                        price = self.price_map.get(input_id, 0)
+                        price = self.market.get_price(input_id, self.quality)
                         total_purchases += price * to_buy
                 
                 # Add produced resource to inventory
@@ -280,7 +275,7 @@ class GeneticAlgorithm:
             if quantity <= 0:
                 continue
             
-            selling_price = self.price_map.get(res_id, 0)
+            selling_price = self.market.get_price(res_id, self.quality)
             if selling_price <= 0:
                 continue
             
@@ -293,7 +288,7 @@ class GeneticAlgorithm:
             # Calculate transport cost
             resource = self.resource_by_id.get(res_id)
             if resource:
-                transport_cost = resource.transportation * self.transport_price * quantity
+                transport_cost = resource.transportation * self.market.transport_price * quantity
             else:
                 transport_cost = 0.0
             

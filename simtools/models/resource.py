@@ -1,6 +1,12 @@
 """Resource model for Sim Companies resources."""
 
+from __future__ import annotations
+
 from dataclasses import dataclass, field
+from typing import TYPE_CHECKING
+
+if TYPE_CHECKING:
+    from simtools.models.market import MarketData
 
 
 @dataclass
@@ -102,8 +108,8 @@ class Resource:
     def calculate_profit(
         self,
         selling_price: float,
-        input_prices: dict[int, float],
-        transport_price: float,
+        market: MarketData,
+        quality: int = 0,
         abundance: float = 100.0,
         admin_overhead: float = 0.0,
         is_contract: bool = False,
@@ -113,8 +119,8 @@ class Resource:
 
         Args:
             selling_price: Price per unit at the target quality.
-            input_prices: Map of resource ID to price for input materials.
-            transport_price: Price per transport unit.
+            market: MarketData instance containing prices and transport info.
+            quality: Quality level for input prices (default: 0).
             abundance: Abundance percentage for mine/well resources.
             admin_overhead: Administrative overhead percentage to add to wages.
             is_contract: If True, use contract mode (0% fee, 50% transport).
@@ -150,13 +156,13 @@ class Resource:
         input_costs_per_hour = 0.0
         missing_input_price = False
         for input_id, input_info in self.inputs.items():
-            price = input_prices.get(input_id, 0)
+            price = market.get_price(input_id, quality)
             if price == 0:
                 missing_input_price = True
             input_costs_per_hour += price * input_info.quantity * produced_per_hour
 
         # Transportation costs (50% reduction for contracts)
-        transport_cost_per_unit = self.transportation * transport_price
+        transport_cost_per_unit = self.transportation * market.transport_price
         if is_contract:
             transport_cost_per_unit *= 0.5
         transport_costs_per_hour = transport_cost_per_unit * produced_per_hour

@@ -31,6 +31,7 @@ from simtools.genetic import (
 )
 from simtools.models.building import Building, build_resource_to_building_map
 from simtools.models.resource import Resource
+from simtools.models.market import MarketData
 
 console = Console()
 
@@ -1225,51 +1226,11 @@ def main() -> None:
         save_json(resources_data, "resources.json")
         save_json(vwaps_data, "vwaps.json")
 
-        # Build price maps
-        price_map: dict[int, float] = {}
-        q0_price_map: dict[int, float] = {}
-
-        if isinstance(vwaps_data, list):
-            for entry in vwaps_data:
-                if isinstance(entry, dict):
-                    r_id = entry.get("resourceId")
-                    quality = entry.get("quality")
-                    vwap = entry.get("vwap")
-                    if r_id is not None and vwap is not None:
-                        if quality == args.quality:
-                            price_map[int(r_id)] = vwap
-                        if quality == 0:
-                            q0_price_map[int(r_id)] = vwap
-
-        # Build name to ID map
-        name_to_id = {r.get("name", "").lower(): r.get("id") for r in raw_resources}
-
-        # Get transport price
-        transport_id = None
-        for res in raw_resources:
-            if res.get("name", "").lower() == "transport":
-                transport_id = res.get("id")
-                break
-
-        if transport_id is None:
-            for res in raw_resources:
-                if "transport" in res.get("name", "").lower():
-                    transport_id = res.get("id")
-                    break
-
-        transport_price = 0.0
-        if transport_id is not None:
-            if isinstance(vwaps_data, list):
-                for entry in vwaps_data:
-                    if (
-                        isinstance(entry, dict)
-                        and entry.get("resourceId") == transport_id
-                        and entry.get("quality") == 0
-                    ):
-                        transport_price = entry.get("vwap", 0)
-                        break
-        else:
-            console.print("[yellow]Warning: Could not find 'Transport' resource by name.[/yellow]")
+        # Build MarketData from API response
+        market = MarketData.from_api_response(
+            vwaps_data=vwaps_data,
+            resources_data=raw_resources,
+        )
 
         # Create Resource objects
         resources = [
@@ -1328,7 +1289,7 @@ def main() -> None:
             has_robots=args.robots,
         )
 
-        profits = calculate_all_profits(filtered_resources, price_map, transport_price, config)
+        profits = calculate_all_profits(filtered_resources, market, args.quality, config)
 
         # Handle lifecycle command
         if args.command == "lifecycle":
@@ -1349,10 +1310,8 @@ def main() -> None:
                     building=building,
                     resource=res,
                     profit_config=config,
-                    current_prices=price_map,
-                    q0_prices=q0_price_map,
-                    transport_price=transport_price,
-                    name_to_id=name_to_id,
+                    market=market,
+                    quality=args.quality,
                     start_abundance=args.abundance / 100.0,
                     max_level=args.max_level,
                     base_build_time=args.build_time,
@@ -1387,15 +1346,14 @@ def main() -> None:
                             calculate_level_roi(
                                 building,
                                 best_p_data,
-                                q0_price_map,
-                                name_to_id,
+                                market,
                                 max_level=args.max_level,
                                 step_mode=args.step_roi,
                             )
                         )
                 display_roi_table(all_roi_data)
             else:
-                roi_data = calculate_building_roi(buildings, profits, q0_price_map, name_to_id)
+                roi_data = calculate_building_roi(buildings, profits, market)
                 display_roi_table(roi_data)
             return
 
@@ -1403,7 +1361,7 @@ def main() -> None:
         if args.command == "profit":
             display_profits_table(
                 profits, 
-                transport_price, 
+                market.transport_price, 
                 config, 
                 search_terms=args.search if hasattr(args, "search") else None, 
                 building_terms=args.building if hasattr(args, "building") else None
@@ -1427,7 +1385,7 @@ def main() -> None:
             # Calculate comparisons for each resource
             comparisons = []
             for res in search_filtered:
-                market_price = price_map.get(res.id, 0)
+                market_price = market.get_price(res.id, args.quality)
                 if market_price == 0:
                     console.print(
                         f"[yellow]Warning: No market price found for {res.name} at Quality {config.quality}[/yellow]"
@@ -1438,14 +1396,14 @@ def main() -> None:
                     resource=res,
                     market_price=market_price,
                     contract_price=args.contract_price,
-                    input_prices=price_map,
-                    transport_price=transport_price,
+                    market=market,
+                    quality=args.quality,
                     config=config,
                 )
                 comparisons.append(comparison)
 
             if comparisons:
-                display_compare_table(comparisons, transport_price, config)
+                display_compare_table(comparisons, market.transport_price, config)
             else:
                 console.print(
                     f"[bold red]No valid comparisons could be made. Check that resources have market prices at Quality {config.quality}[/bold red]"
@@ -1472,10 +1430,8 @@ def main() -> None:
                 config=sim_config,
                 buildings=buildings,
                 resources=filtered_resources,
-                price_map=price_map,
-                q0_price_map=q0_price_map,
-                transport_price=transport_price,
-                name_to_id=name_to_id,
+                market=market,
+                quality=args.quality,
                 abundance=args.abundance,
                 admin_overhead=args.admin_overhead,
                 has_robots=args.robots,
@@ -1577,11 +1533,9 @@ def main() -> None:
                     building=building,
                     level=level,
                     resources=building_res,
-                    price_map=price_map,
-                    transport_price=transport_price,
+                    market=market,
+                    quality=args.quality,
                     config=config,
-                    q0_price_map=q0_price_map,
-                    name_to_id=name_to_id,
                 )
                 building_stats.append(stat)
                 buildings_with_levels.append((building, level))
@@ -1593,11 +1547,9 @@ def main() -> None:
             recommendations = calculate_upgrade_recommendations(
                 buildings_with_levels=buildings_with_levels,
                 building_resources=building_resources,
-                price_map=price_map,
-                transport_price=transport_price,
+                market=market,
+                quality=args.quality,
                 config=config,
-                q0_price_map=q0_price_map,
-                name_to_id=name_to_id,
             )
 
             display_upgrade_recommendations(recommendations, config, top_n=args.top_n)
