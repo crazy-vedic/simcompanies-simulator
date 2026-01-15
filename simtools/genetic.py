@@ -103,6 +103,11 @@ class GeneticAlgorithm:
     ):
         """Initialize the genetic algorithm.
         
+        Note: The genetic algorithm simulation does not currently support 
+        sales_speed_bonus for retail buildings. Retail calculations use 
+        the base sales rate (no bonus applied). This simplification keeps
+        the simulation faster and more straightforward.
+        
         Args:
             config: Simulation configuration.
             buildings: List of available building types.
@@ -283,12 +288,19 @@ class GeneticAlgorithm:
                     
                     # Check if we have inventory to sell
                     available = inventory.get(resource.id, 0.0)
-                    units_sold = min(units_to_sell, available)
+                    
+                    # If no inventory, need to buy from market
+                    if available < units_to_sell:
+                        to_buy = units_to_sell - available
+                        market_price = self.market.get_price(resource.id, self.quality)
+                        total_purchases += market_price * to_buy
+                        units_sold = units_to_sell
+                        inventory[resource.id] = 0.0
+                    else:
+                        units_sold = units_to_sell
+                        inventory[resource.id] = available - units_sold
                     
                     if units_sold > 0:
-                        # Remove from inventory
-                        inventory[resource.id] = available - units_sold
-                        
                         # Calculate revenue (no market fees, no transport costs)
                         revenue = retail_price * units_sold
                         total_retail_sales += revenue

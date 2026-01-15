@@ -140,34 +140,10 @@ def calculate_all_profits(
 
         # Add retail profit if resource has retail info
         if res.retail_info:
-            # Calculate input cost per unit (cost to produce or buy one unit)
-            # This is the market profit calculation at level 1, divided by production rate
-            if selling_price > 0:
-                # Calculate cost per unit from production
-                produced_per_hour = res.get_effective_production(config.abundance)
-                if produced_per_hour > 0:
-                    # Calculate production costs
-                    base_wages = res.wages
-                    if config.has_robots:
-                        base_wages *= 0.97
-                    admin_cost = base_wages * (config.admin_overhead / 100.0)
-                    total_wages = base_wages + admin_cost
-
-                    # Input costs per unit
-                    input_costs_per_unit = 0.0
-                    for input_id, input_info in res.inputs.items():
-                        price = market.get_price(input_id, quality)
-                        input_costs_per_unit += price * input_info.quantity
-
-                    # Total cost per unit = wages per unit + input costs per unit
-                    wages_per_unit = total_wages / produced_per_hour
-                    input_cost_per_unit = wages_per_unit + input_costs_per_unit
-                else:
-                    # No production, use market price as input cost
-                    input_cost_per_unit = selling_price
-            else:
-                # No market price, use 0 (will mark as missing)
-                input_cost_per_unit = 0.0
+            # For retail, the input cost is simply the market price of the product
+            # being sold, since the retail store needs to acquire/buy the product
+            # to sell it. This is different from production cost.
+            input_cost_per_unit = selling_price if selling_price > 0 else 0.0
 
             retail_profit = res.calculate_retail_profit(
                 market=market,
@@ -178,10 +154,9 @@ def calculate_all_profits(
                 input_cost_per_unit=input_cost_per_unit,
             )
             
-            # Only add if profitable
-            if retail_profit.get("profit_per_hour", 0) > 0:
-                retail_profit["is_retail"] = True
-                profits.append(retail_profit)
+            # Add retail entry (consistent with market entries - add regardless of profitability)
+            retail_profit["is_retail"] = True
+            profits.append(retail_profit)
 
     # Sort by profit descending
     profits.sort(key=lambda x: x["profit_per_hour"], reverse=True)
