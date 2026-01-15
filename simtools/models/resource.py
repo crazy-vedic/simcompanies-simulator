@@ -187,3 +187,125 @@ class Resource:
             "is_abundance_res": self.is_abundance,
         }
 
+    def calculate_retail_profit(
+        self,
+        market: MarketData,
+        quality: int = 0,
+        building_level: int = 1,
+        sales_speed_bonus: float = 0.0,
+        admin_overhead: float = 0.0,
+        input_cost_per_unit: float = 0.0,
+    ) -> dict:
+        """Calculate retail profit metrics for this resource.
+
+        Retail is a "virtual production" where:
+        - Input: The resource being sold
+        - Output: Money (profit from retail sales)
+        - No market fees (money goes directly to you)
+        - No transport costs on sales
+
+        Args:
+            market: MarketData instance containing prices and transport info.
+            quality: Quality level for retail data lookup (default: 0).
+            building_level: Level of the retail building (default: 1).
+            sales_speed_bonus: Sales speed bonus as decimal (e.g., 0.01 for 1%).
+            admin_overhead: Administrative overhead percentage to add to wages.
+            input_cost_per_unit: Cost to acquire one unit of the resource.
+
+        Returns:
+            Dictionary with retail profit breakdown:
+                - profit_per_hour: Net profit per hour
+                - revenue_per_hour: Gross revenue per hour (retail_price * units_sold)
+                - wages_per_hour: Total wages per hour
+                - units_sold_per_hour: Units sold per hour
+                - revenue_less_wages_per_unit: Revenue less wages per unit
+                - retail_price: Retail selling price per unit
+                - missing_input_price: True if input cost is missing
+        """
+        if not self.retail_info:
+            return {
+                "name": f"{self.name} (Retail)",
+                "profit_per_hour": 0.0,
+                "revenue_per_hour": 0.0,
+                "wages_per_hour": 0.0,
+                "units_sold_per_hour": 0.0,
+                "revenue_less_wages_per_unit": 0.0,
+                "retail_price": 0.0,
+                "missing_input_price": True,
+            }
+
+        # Find retail data for quality
+        retail_data = next(
+            (r for r in self.retail_info if r.get("quality") == quality), None
+        )
+        if not retail_data:
+            return {
+                "name": f"{self.name} (Retail)",
+                "profit_per_hour": 0.0,
+                "revenue_per_hour": 0.0,
+                "wages_per_hour": 0.0,
+                "units_sold_per_hour": 0.0,
+                "revenue_less_wages_per_unit": 0.0,
+                "retail_price": 0.0,
+                "missing_input_price": True,
+            }
+
+        # Extract retail data
+        building_levels_per_unit = retail_data.get(
+            "buildingLevelsNeededPerUnitPerHour", 0
+        )
+        sales_wages = retail_data.get("salesWages", 0)
+        retail_price = retail_data.get("averagePrice", 0)
+
+        if building_levels_per_unit <= 0 or retail_price <= 0:
+            return {
+                "name": f"{self.name} (Retail)",
+                "profit_per_hour": 0.0,
+                "revenue_per_hour": 0.0,
+                "wages_per_hour": 0.0,
+                "units_sold_per_hour": 0.0,
+                "revenue_less_wages_per_unit": 0.0,
+                "retail_price": retail_price,
+                "missing_input_price": True,
+            }
+
+        # Calculate units sold per hour
+        # units_sold = (1 / buildingLevelsNeededPerUnitPerHour) * building_level * (1 + sales_speed_bonus)
+        units_sold_per_hour = (
+            (1.0 / building_levels_per_unit)
+            * building_level
+            * (1.0 + sales_speed_bonus)
+        )
+
+        # Calculate wages per hour
+        # wages = salesWages * building_level * (1 + admin_overhead / 100)
+        wages_per_hour = sales_wages * building_level * (1.0 + admin_overhead / 100.0)
+
+        # Calculate revenue less wages per unit
+        if units_sold_per_hour > 0:
+            revenue_less_wages_per_unit = retail_price - (
+                wages_per_hour / units_sold_per_hour
+            )
+        else:
+            revenue_less_wages_per_unit = 0.0
+
+        # Calculate revenue per hour
+        revenue_per_hour = retail_price * units_sold_per_hour
+
+        # Calculate profit per hour
+        # profit = (retail_price * units_sold) - wages - (input_cost_per_unit * units_sold)
+        profit_per_hour = (
+            revenue_per_hour - wages_per_hour - (input_cost_per_unit * units_sold_per_hour)
+        )
+
+        return {
+            "name": f"{self.name} (Retail)",
+            "profit_per_hour": profit_per_hour,
+            "revenue_per_hour": revenue_per_hour,
+            "wages_per_hour": wages_per_hour,
+            "units_sold_per_hour": units_sold_per_hour,
+            "revenue_less_wages_per_unit": revenue_less_wages_per_unit,
+            "retail_price": retail_price,
+            "missing_input_price": input_cost_per_unit == 0.0,
+        }
+
