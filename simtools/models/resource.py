@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import math
 from dataclasses import dataclass, field
 from typing import TYPE_CHECKING
 
@@ -259,11 +260,10 @@ class Resource:
             }
 
         # Extract retail data
-        building_levels_per_unit = retail_data.get(
-            "buildingLevelsNeededPerUnitPerHour", 0
-        )
         sales_wages = retail_data.get("salesWages", 0)
         retail_price = retail_data.get("averagePrice", 0)
+        modeled_units = retail_data.get("modeledUnitsSoldAnHour", 0)
+        saturation = retail_data.get("saturation", 1.0)
 
         if retail_price <= 0:
             return {
@@ -282,12 +282,15 @@ class Resource:
             }
 
         # Calculate units sold per hour
-        # Use buildingLevelsNeededPerUnitPerHour which represents how many building
-        # levels are needed to sell one unit per hour. The inverse gives units per
-        # building level per hour.
-        if building_levels_per_unit > 0:
+        # Use modeledUnitsSoldAnHour adjusted by market saturation.
+        # The formula accounts for market saturation using a logarithmic dampening:
+        # units = modeledUnitsSoldAnHour / (1 + ln(saturation))
+        # At saturation=1.0 (balanced market), ln(1)=0, so units = modeledUnitsSoldAnHour
+        # At saturation>1.0 (oversupply), sales are reduced logarithmically
+        if modeled_units > 0 and saturation > 0:
+            saturation_factor = 1.0 + math.log(saturation) if saturation > 1.0 else 1.0
             units_sold_per_hour = (
-                (1.0 / building_levels_per_unit)
+                (modeled_units / saturation_factor)
                 * building_level
                 * (1.0 + sales_speed_bonus)
             )

@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import copy
+import math
 import random
 from dataclasses import dataclass, field
 from typing import TYPE_CHECKING
@@ -275,18 +276,20 @@ class GeneticAlgorithm:
                     if not retail_data:
                         continue
                     
-                    building_levels_per_unit = retail_data.get("buildingLevelsNeededPerUnitPerHour", 0)
                     sales_wages = retail_data.get("salesWages", 0)
                     retail_price = retail_data.get("averagePrice", 0)
+                    modeled_units = retail_data.get("modeledUnitsSoldAnHour", 0)
+                    saturation = retail_data.get("saturation", 1.0)
                     
                     if retail_price <= 0:
                         continue
                     
                     # Calculate units that can be sold this hour
                     # Note: sales_speed_bonus is not tracked in genetic algorithm for simplicity
-                    # Use buildingLevelsNeededPerUnitPerHour (inverse gives units per level)
-                    if building_levels_per_unit > 0:
-                        units_to_sell = (1.0 / building_levels_per_unit) * level
+                    # Use modeledUnitsSoldAnHour with saturation adjustment
+                    if modeled_units > 0 and saturation > 0:
+                        saturation_factor = 1.0 + math.log(saturation) if saturation > 1.0 else 1.0
+                        units_to_sell = (modeled_units / saturation_factor) * level
                     else:
                         continue
                     
