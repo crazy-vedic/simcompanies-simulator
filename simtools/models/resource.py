@@ -309,7 +309,8 @@ class Resource:
                     * (1.0 + sales_speed_bonus)
                 )
             else:
-                # Edge case: if demand factors are zero or negative, return empty result
+                # Edge case: if demand factors are zero or negative
+                # (e.g., retailAdjustment >= retail_price), no sales possible
                 return {
                     "name": f"{self.name} (Retail)",
                     "profit_per_hour": 0.0,
@@ -318,7 +319,7 @@ class Resource:
                     "units_sold_per_hour": 0.0,
                     "revenue_less_wages_per_unit": 0.0,
                     "retail_price": retail_price,
-                    "missing_input_price": True,
+                    "missing_input_price": False,  # Price is available, just unfavorable market
                     "is_abundance_res": False,
                     "market_fee_per_hour": 0.0,
                     "costs_per_hour": 0.0,
