@@ -9,6 +9,7 @@ from typing import TYPE_CHECKING
 
 if TYPE_CHECKING:
     from simtools.models.resource import Resource
+    from simtools.models.market import MarketData
 
 
 @dataclass
@@ -109,7 +110,7 @@ class Building:
                 self._resources.append(resource)
 
     def calculate_construction_cost(
-        self, market: "MarketData"
+        self, market: MarketData
     ) -> tuple[float, bool]:
         """Calculate the total construction cost for this building.
 
@@ -119,8 +120,6 @@ class Building:
         Returns:
             Tuple of (total_cost, missing_price_flag).
         """
-        from simtools.models.market import MarketData
-        
         total_cost = 0.0
         missing_price = False
 
@@ -140,7 +139,7 @@ class Building:
 
     def calculate_upgrade_cost(
         self,
-        market: "MarketData",
+        market: MarketData,
         target_level: int,
     ) -> tuple[float, bool]:
         """Calculate the cost to upgrade this building to a target level.
@@ -155,8 +154,6 @@ class Building:
         Returns:
             Tuple of (total_upgrade_cost, missing_price_flag).
         """
-        from simtools.models.market import MarketData
-        
         if target_level <= self.level:
             return 0.0, False
 

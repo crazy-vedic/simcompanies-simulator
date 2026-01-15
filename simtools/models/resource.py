@@ -1,6 +1,12 @@
 """Resource model for Sim Companies resources."""
 
+from __future__ import annotations
+
 from dataclasses import dataclass, field
+from typing import TYPE_CHECKING
+
+if TYPE_CHECKING:
+    from simtools.models.market import MarketData
 
 
 @dataclass
@@ -102,7 +108,7 @@ class Resource:
     def calculate_profit(
         self,
         selling_price: float,
-        market: "MarketData",
+        market: MarketData,
         quality: int = 0,
         abundance: float = 100.0,
         admin_overhead: float = 0.0,
@@ -129,8 +135,6 @@ class Resource:
                 - transport_costs_per_hour: Transportation costs per hour
                 - missing_input_price: True if any input price was missing
         """
-        from simtools.models.market import MarketData
-        
         produced_per_hour = self.get_effective_production(abundance)
 
         # Wages with optional robots reduction (3%) and admin overhead
