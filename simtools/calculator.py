@@ -21,7 +21,6 @@ class ProfitConfig:
     admin_overhead: float = 0.0
     is_contract: bool = False
     has_robots: bool = False
-    sales_speed_bonus: float = 0.0
 
 
 def find_best_resource_profit(
@@ -119,44 +118,24 @@ def calculate_all_profits(
 
     Returns:
         List of profit dictionaries sorted by profit_per_hour descending.
-        Includes both market sales and retail sales where applicable.
     """
     profits = []
 
     for res in resources:
         selling_price = market.get_price(res.id, quality)
-        if selling_price > 0:
-            # Calculate market profit (existing behavior)
-            profit_data = res.calculate_profit(
-                selling_price=selling_price,
-                market=market,
-                quality=quality,
-                abundance=config.abundance,
-                admin_overhead=config.admin_overhead,
-                is_contract=config.is_contract,
-                has_robots=config.has_robots,
-            )
-            profits.append(profit_data)
+        if selling_price == 0:
+            continue
 
-        # Add retail profit if resource has retail info
-        if res.retail_info:
-            # For retail, the input cost is simply the market price of the product
-            # being sold, since the retail store needs to acquire/buy the product
-            # to sell it. This is different from production cost.
-            input_cost_per_unit = selling_price if selling_price > 0 else 0.0
-
-            retail_profit = res.calculate_retail_profit(
-                market=market,
-                quality=quality,
-                building_level=1,
-                sales_speed_bonus=config.sales_speed_bonus,
-                admin_overhead=config.admin_overhead,
-                input_cost_per_unit=input_cost_per_unit,
-            )
-            
-            # Add retail entry (consistent with market entries - add regardless of profitability)
-            retail_profit["is_retail"] = True
-            profits.append(retail_profit)
+        profit_data = res.calculate_profit(
+            selling_price=selling_price,
+            market=market,
+            quality=quality,
+            abundance=config.abundance,
+            admin_overhead=config.admin_overhead,
+            is_contract=config.is_contract,
+            has_robots=config.has_robots,
+        )
+        profits.append(profit_data)
 
     # Sort by profit descending
     profits.sort(key=lambda x: x["profit_per_hour"], reverse=True)
@@ -169,9 +148,6 @@ def calculate_building_roi(
     market: MarketData,
 ) -> list[dict]:
     """Calculate ROI for buildings based on their best performing resource.
-
-    For retail buildings, looks for retail profit entries (with "(Retail)" suffix).
-    For production buildings, uses standard market profit entries.
 
     Args:
         buildings: List of Building instances.
@@ -193,15 +169,10 @@ def calculate_building_roi(
         has_relevant_resource = False
 
         for res_name in building.produces:
-            # For retail buildings, look for the retail version
-            if building.retail:
-                lookup_name = f"{res_name} (Retail)".lower()
-            else:
-                lookup_name = res_name.lower()
-            
-            if lookup_name in res_profit_map:
+            res_name_lower = res_name.lower()
+            if res_name_lower in res_profit_map:
                 has_relevant_resource = True
-                p_data = res_profit_map[lookup_name]
+                p_data = res_profit_map[res_name_lower]
                 if p_data["profit_per_hour"] > best_profit:
                     best_profit = p_data["profit_per_hour"]
                     best_name = p_data["name"]
