@@ -300,9 +300,14 @@ class GeneticAlgorithm:
                     if available < units_to_sell:
                         to_buy = units_to_sell - available
                         market_price = self.market.get_price(resource.id, self.quality)
-                        total_purchases += market_price * to_buy
-                        units_sold = units_to_sell
-                        inventory[resource.id] = 0.0
+                        if market_price > 0:
+                            total_purchases += market_price * to_buy
+                            units_sold = units_to_sell
+                            inventory[resource.id] = 0.0
+                        else:
+                            # No market price available, can only sell from inventory
+                            units_sold = available
+                            inventory[resource.id] = 0.0
                     else:
                         units_sold = units_to_sell
                         inventory[resource.id] = available - units_sold

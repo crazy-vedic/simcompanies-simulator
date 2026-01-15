@@ -195,7 +195,7 @@ def calculate_building_roi(
         for res_name in building.produces:
             # For retail buildings, look for the retail version
             if building.retail:
-                lookup_name = f"{res_name} (retail)".lower()
+                lookup_name = f"{res_name} (Retail)".lower()
             else:
                 lookup_name = res_name.lower()
             
