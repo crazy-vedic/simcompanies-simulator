@@ -280,19 +280,23 @@ class GeneticAlgorithm:
                     retail_price = retail_data.get("averagePrice", 0)
                     modeled_units = retail_data.get("modeledUnitsSoldAnHour", 0)
                     saturation = retail_data.get("saturation", 1.0)
+                    retail_adjustment = retail_data.get("retailAdjustment", 1)
                     
                     if retail_price <= 0:
                         continue
                     
-                    # Calculate units that can be sold this hour
+                    # Calculate units that can be sold this hour using Sim Companies retail demand curve.
+                    # The formula is: actual_units = modeled_units × (Price - Adjustment) / (Price × Saturation - Adjustment)
                     # Note: sales_speed_bonus is not tracked in genetic algorithm for simplicity
-                    # Use modeledUnitsSoldAnHour with saturation adjustment
                     if modeled_units > 0:
-                        if saturation > 1.0:
-                            saturation_factor = 1.0 + math.log(saturation)
+                        base_demand = retail_price - retail_adjustment
+                        actual_demand = (retail_price * saturation) - retail_adjustment
+                        
+                        if actual_demand > 0 and base_demand > 0:
+                            saturation_ratio = base_demand / actual_demand
+                            units_to_sell = modeled_units * saturation_ratio * level
                         else:
-                            saturation_factor = 1.0
-                        units_to_sell = (modeled_units / saturation_factor) * level
+                            continue
                     else:
                         continue
                     
