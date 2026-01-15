@@ -232,6 +232,10 @@ class Resource:
                 "revenue_less_wages_per_unit": 0.0,
                 "retail_price": 0.0,
                 "missing_input_price": True,
+                "is_abundance_res": False,
+                "market_fee_per_hour": 0.0,
+                "costs_per_hour": 0.0,
+                "transport_costs_per_hour": 0.0,
             }
 
         # Find retail data for quality
@@ -248,6 +252,10 @@ class Resource:
                 "revenue_less_wages_per_unit": 0.0,
                 "retail_price": 0.0,
                 "missing_input_price": True,
+                "is_abundance_res": False,
+                "market_fee_per_hour": 0.0,
+                "costs_per_hour": 0.0,
+                "transport_costs_per_hour": 0.0,
             }
 
         # Extract retail data
@@ -267,6 +275,10 @@ class Resource:
                 "revenue_less_wages_per_unit": 0.0,
                 "retail_price": retail_price,
                 "missing_input_price": True,
+                "is_abundance_res": False,
+                "market_fee_per_hour": 0.0,
+                "costs_per_hour": 0.0,
+                "transport_costs_per_hour": 0.0,
             }
 
         # Calculate units sold per hour
@@ -307,5 +319,10 @@ class Resource:
             "revenue_less_wages_per_unit": revenue_less_wages_per_unit,
             "retail_price": retail_price,
             "missing_input_price": input_cost_per_unit == 0.0,
+            "is_abundance_res": False,  # Retail entries are not abundance-based
+            # Add fields expected by display functions
+            "market_fee_per_hour": 0.0,  # No market fees for retail
+            "costs_per_hour": wages_per_hour + (input_cost_per_unit * units_sold_per_hour),
+            "transport_costs_per_hour": 0.0,  # No transport costs for retail sales
         }
 
