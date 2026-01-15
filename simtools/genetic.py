@@ -103,6 +103,11 @@ class GeneticAlgorithm:
     ):
         """Initialize the genetic algorithm.
         
+        Note: The genetic algorithm simulation does not currently support 
+        sales_speed_bonus for retail buildings. Retail calculations use 
+        the base sales rate (no bonus applied). This simplification keeps
+        the simulation faster and more straightforward.
+        
         Args:
             config: Simulation configuration.
             buildings: List of available building types.
@@ -214,10 +219,11 @@ class GeneticAlgorithm:
         """Simulate 48 hours of production and calculate profit.
         
         Rules:
-        - Each hour, buildings produce resources
+        - Production buildings produce resources into inventory
+        - Retail buildings sell from inventory (no market fees, no transport costs)
         - Production first uses company inventory for inputs
         - Missing inputs are bought from market
-        - At end, all inventory is sold (with fees and transport costs)
+        - At end, remaining inventory is sold (with fees and transport costs)
         - Net profit = sales - purchases
         
         Args:
@@ -233,44 +239,114 @@ class GeneticAlgorithm:
         inventory: dict[int, float] = {}
         # Total money spent on market purchases
         total_purchases = 0.0
+        # Total money earned from retail sales
+        total_retail_sales = 0.0
+        # Total wages for retail
+        total_retail_wages = 0.0
         
-        # Determine what each building produces
-        building_production: list[tuple[Resource, int]] = []
+        # Determine what each building produces or sells
+        # List of (building, resource, level, is_retail)
+        building_operations: list[tuple[Building, Resource, int, bool]] = []
         for gene in individual.genes:
+            building = self.building_by_name.get(gene.building_name)
+            if not building:
+                continue
             resource = self.get_best_resource_for_building(gene.building_name)
             if resource:
-                building_production.append((resource, gene.level))
+                building_operations.append((building, resource, gene.level, building.retail))
         
-        if not building_production:
+        if not building_operations:
             return 0.0
         
         # Simulate 48 hours
         for _ in range(48):
-            for resource, level in building_production:
-                # Calculate production per hour at this level
-                produced = resource.get_effective_production(self.abundance) * level
-                
-                # Calculate input requirements
-                for input_id, input_info in resource.inputs.items():
-                    required = input_info.quantity * produced
+            # Process production buildings
+            for building, resource, level, is_retail in building_operations:
+                if is_retail:
+                    # Retail building: sell from inventory
+                    if not resource.retail_info:
+                        continue
                     
-                    # Use inventory first
-                    available = inventory.get(input_id, 0.0)
-                    if available >= required:
-                        inventory[input_id] = available - required
+                    # Find retail data for quality
+                    retail_data = next(
+                        (r for r in resource.retail_info if r.get("quality") == self.quality),
+                        None
+                    )
+                    if not retail_data:
+                        continue
+                    
+                    building_levels_per_unit = retail_data.get("buildingLevelsNeededPerUnitPerHour", 0)
+                    sales_wages = retail_data.get("salesWages", 0)
+                    modeled_wages = retail_data.get("modeledStoreWages", 0)
+                    retail_price = retail_data.get("averagePrice", 0)
+                    modeled_units = retail_data.get("modeledUnitsSoldAnHour", 0)
+                    modeled_production_cost = retail_data.get("modeledProductionCostPerUnit", 1.0)
+                    
+                    if retail_price <= 0:
+                        continue
+                    
+                    # Calculate units that can be sold this hour
+                    # Note: sales_speed_bonus is not tracked in genetic algorithm for simplicity
+                    # Use modeled units adjusted by production cost
+                    if modeled_units > 0 and modeled_production_cost > 0:
+                        units_to_sell = (modeled_units / modeled_production_cost) * level
+                    elif building_levels_per_unit > 0:
+                        units_to_sell = (1.0 / building_levels_per_unit) * level
                     else:
-                        # Buy the rest from market
-                        to_buy = required - available
-                        inventory[input_id] = 0.0
+                        continue
+                    
+                    # Check if we have inventory to sell
+                    available = inventory.get(resource.id, 0.0)
+                    
+                    # If no inventory, need to buy from market
+                    if available < units_to_sell:
+                        to_buy = units_to_sell - available
+                        market_price = self.market.get_price(resource.id, self.quality)
+                        if market_price > 0:
+                            total_purchases += market_price * to_buy
+                            units_sold = units_to_sell
+                            inventory[resource.id] = 0.0
+                        else:
+                            # No market price available, can only sell from inventory
+                            units_sold = available
+                            inventory[resource.id] = 0.0
+                    else:
+                        units_sold = units_to_sell
+                        inventory[resource.id] = available - units_sold
+                    
+                    if units_sold > 0:
+                        # Calculate revenue (no market fees, no transport costs)
+                        revenue = retail_price * units_sold
+                        total_retail_sales += revenue
                         
-                        price = self.market.get_price(input_id, self.quality)
-                        total_purchases += price * to_buy
-                
-                # Add produced resource to inventory
-                inventory[resource.id] = inventory.get(resource.id, 0.0) + produced
+                        # Calculate wages - always use salesWages with admin overhead
+                        wages = sales_wages * level * (1.0 + self.admin_overhead / 100.0)
+                        total_retail_wages += wages
+                else:
+                    # Production building: produce resources
+                    produced = resource.get_effective_production(self.abundance) * level
+                    
+                    # Calculate input requirements
+                    for input_id, input_info in resource.inputs.items():
+                        required = input_info.quantity * produced
+                        
+                        # Use inventory first
+                        available = inventory.get(input_id, 0.0)
+                        if available >= required:
+                            inventory[input_id] = available - required
+                        else:
+                            # Buy the rest from market
+                            to_buy = required - available
+                            inventory[input_id] = 0.0
+                            
+                            price = self.market.get_price(input_id, self.quality)
+                            total_purchases += price * to_buy
+                    
+                    # Add produced resource to inventory
+                    inventory[resource.id] = inventory.get(resource.id, 0.0) + produced
         
-        # Sell all inventory at end
-        total_sales = 0.0
+        # Sell all remaining inventory at end (with market fees and transport)
+        total_market_sales = 0.0
         for res_id, quantity in inventory.items():
             if quantity <= 0:
                 continue
@@ -292,10 +368,10 @@ class GeneticAlgorithm:
             else:
                 transport_cost = 0.0
             
-            total_sales += revenue - market_fee - transport_cost
+            total_market_sales += revenue - market_fee - transport_cost
         
-        # Net profit
-        return total_sales - total_purchases
+        # Net profit = retail sales - retail wages + market sales - purchases
+        return total_retail_sales - total_retail_wages + total_market_sales - total_purchases
     
     def evaluate_fitness(self, individual: Individual) -> float:
         """Evaluate the fitness of an individual.

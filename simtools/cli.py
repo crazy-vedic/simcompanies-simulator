@@ -843,6 +843,13 @@ def parse_args() -> argparse.Namespace:
         dest="exclude_seasonal",
         help="Exclude seasonal resources",
     )
+    parent_parser.add_argument(
+        "--sales-speed-bonus",
+        type=float,
+        default=0.0,
+        dest="sales_speed_bonus",
+        help="Sales speed bonus percentage for retail (default: 0)",
+    )
 
     # Main parser
     parser = argparse.ArgumentParser(
@@ -905,6 +912,13 @@ def parse_args() -> argparse.Namespace:
         action="store_true",
         dest="exclude_seasonal",
         help="Exclude seasonal resources",
+    )
+    parser.add_argument(
+        "--sales-speed-bonus",
+        type=float,
+        default=0.0,
+        dest="sales_speed_bonus",
+        help="Sales speed bonus percentage for retail (default: 0)",
     )
     
     subparsers = parser.add_subparsers(dest="command", help="Available commands")
@@ -1210,7 +1224,7 @@ def main() -> None:
     # Load data files
     abundance_resources = load_json_list(get_data_path("abundance_resources.json"))
     seasonal_resources = load_json_list(get_data_path("seasonal_resources.json"))
-    buildings = Building.load_all(get_data_path("buildings.json"))
+    buildings = Building.load_all(get_data_path("buildings.json"), include_retail=True)
     resource_to_building = build_resource_to_building_map(buildings)
 
     # Fetch API data
@@ -1287,6 +1301,7 @@ def main() -> None:
             admin_overhead=args.admin_overhead,
             is_contract=args.contract,
             has_robots=args.robots,
+            sales_speed_bonus=args.sales_speed_bonus / 100.0,  # Convert percentage to decimal
         )
 
         profits = calculate_all_profits(filtered_resources, market, args.quality, config)
