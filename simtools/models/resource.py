@@ -264,6 +264,7 @@ class Resource:
         retail_price = retail_data.get("averagePrice", 0)
         modeled_units = retail_data.get("modeledUnitsSoldAnHour", 0)
         saturation = retail_data.get("saturation", 1.0)
+        retail_adjustment = retail_data.get("retailAdjustment", 1)
 
         if retail_price <= 0:
             return {
@@ -281,22 +282,49 @@ class Resource:
                 "transport_costs_per_hour": 0.0,
             }
 
-        # Calculate units sold per hour
-        # Use modeledUnitsSoldAnHour adjusted by market saturation.
-        # The formula accounts for market saturation using a logarithmic dampening:
-        # - At saturation <= 1.0 (balanced/undersupplied): units = modeledUnitsSoldAnHour (full rate)
-        # - At saturation > 1.0 (oversupply): units = modeledUnitsSoldAnHour / (1 + ln(saturation))
-        # This reduces sales logarithmically as saturation increases above 1.0
+        # Calculate units sold per hour using Sim Companies retail demand curve.
+        # The formula is derived from: Time (seconds) = C × (Price × Saturation - Adjustment)
+        # where C is a product-specific constant.
+        #
+        # Since modeledUnitsSoldAnHour represents units at saturation = 1.0:
+        #   modeled_units = 3600 / (C × (Price × 1.0 - Adjustment))
+        #   actual_units = 3600 / (C × (Price × Saturation - Adjustment))
+        #
+        # Therefore:
+        #   actual_units = modeled_units × (Price - Adjustment) / (Price × Saturation - Adjustment)
+        #
+        # - When saturation = 1.0: actual_units = modeled_units (no change)
+        # - When saturation > 1.0 (oversupply): demand factor increases, units decrease
+        # - When saturation < 1.0 (undersupply): demand factor decreases, units increase
         if modeled_units > 0:
-            if saturation > 1.0:
-                saturation_factor = 1.0 + math.log(saturation)
+            base_demand = retail_price - retail_adjustment
+            actual_demand = (retail_price * saturation) - retail_adjustment
+            
+            if actual_demand > 0 and base_demand > 0:
+                saturation_ratio = base_demand / actual_demand
+                units_sold_per_hour = (
+                    modeled_units
+                    * saturation_ratio
+                    * building_level
+                    * (1.0 + sales_speed_bonus)
+                )
             else:
-                saturation_factor = 1.0
-            units_sold_per_hour = (
-                (modeled_units / saturation_factor)
-                * building_level
-                * (1.0 + sales_speed_bonus)
-            )
+                # Edge case: if demand factors are zero or negative
+                # (e.g., retailAdjustment >= retail_price), no sales possible
+                return {
+                    "name": f"{self.name} (Retail)",
+                    "profit_per_hour": 0.0,
+                    "revenue_per_hour": 0.0,
+                    "wages_per_hour": 0.0,
+                    "units_sold_per_hour": 0.0,
+                    "revenue_less_wages_per_unit": 0.0,
+                    "retail_price": retail_price,
+                    "missing_input_price": False,  # Price is available, just unfavorable market
+                    "is_abundance_res": False,
+                    "market_fee_per_hour": 0.0,
+                    "costs_per_hour": 0.0,
+                    "transport_costs_per_hour": 0.0,
+                }
         else:
             return {
                 "name": f"{self.name} (Retail)",
