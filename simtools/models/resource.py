@@ -264,8 +264,12 @@ class Resource:
         )
         sales_wages = retail_data.get("salesWages", 0)
         retail_price = retail_data.get("averagePrice", 0)
+        
+        # Use modeledUnitsSoldAnHour if available, otherwise calculate
+        # The modeledUnitsSoldAnHour represents units sold per hour at level 1 with no bonuses
+        modeled_units = retail_data.get("modeledUnitsSoldAnHour", 0)
 
-        if building_levels_per_unit <= 0 or retail_price <= 0:
+        if retail_price <= 0:
             return {
                 "name": f"{self.name} (Retail)",
                 "profit_per_hour": 0.0,
@@ -282,12 +286,32 @@ class Resource:
             }
 
         # Calculate units sold per hour
-        # units_sold = (1 / buildingLevelsNeededPerUnitPerHour) * building_level * (1 + sales_speed_bonus)
-        units_sold_per_hour = (
-            (1.0 / building_levels_per_unit)
-            * building_level
-            * (1.0 + sales_speed_bonus)
-        )
+        # Use modeled units if available, otherwise fall back to calculation
+        if modeled_units > 0:
+            # Use the modeled value as base, apply building level and sales speed bonus
+            units_sold_per_hour = modeled_units * building_level * (1.0 + sales_speed_bonus)
+        elif building_levels_per_unit > 0:
+            # Fall back to calculation if no modeled value
+            units_sold_per_hour = (
+                (1.0 / building_levels_per_unit)
+                * building_level
+                * (1.0 + sales_speed_bonus)
+            )
+        else:
+            return {
+                "name": f"{self.name} (Retail)",
+                "profit_per_hour": 0.0,
+                "revenue_per_hour": 0.0,
+                "wages_per_hour": 0.0,
+                "units_sold_per_hour": 0.0,
+                "revenue_less_wages_per_unit": 0.0,
+                "retail_price": retail_price,
+                "missing_input_price": True,
+                "is_abundance_res": False,
+                "market_fee_per_hour": 0.0,
+                "costs_per_hour": 0.0,
+                "transport_costs_per_hour": 0.0,
+            }
 
         # Calculate wages per hour
         # wages = salesWages * building_level * (1 + admin_overhead / 100)
