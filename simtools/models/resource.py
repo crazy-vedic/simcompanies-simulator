@@ -284,11 +284,14 @@ class Resource:
         # Calculate units sold per hour
         # Use modeledUnitsSoldAnHour adjusted by market saturation.
         # The formula accounts for market saturation using a logarithmic dampening:
-        # units = modeledUnitsSoldAnHour / (1 + ln(saturation))
-        # At saturation=1.0 (balanced market), ln(1)=0, so units = modeledUnitsSoldAnHour
-        # At saturation>1.0 (oversupply), sales are reduced logarithmically
-        if modeled_units > 0 and saturation > 0:
-            saturation_factor = 1.0 + math.log(saturation) if saturation > 1.0 else 1.0
+        # - At saturation <= 1.0 (balanced/undersupplied): units = modeledUnitsSoldAnHour (full rate)
+        # - At saturation > 1.0 (oversupply): units = modeledUnitsSoldAnHour / (1 + ln(saturation))
+        # This reduces sales logarithmically as saturation increases above 1.0
+        if modeled_units > 0:
+            if saturation > 1.0:
+                saturation_factor = 1.0 + math.log(saturation)
+            else:
+                saturation_factor = 1.0
             units_sold_per_hour = (
                 (modeled_units / saturation_factor)
                 * building_level

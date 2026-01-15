@@ -287,8 +287,11 @@ class GeneticAlgorithm:
                     # Calculate units that can be sold this hour
                     # Note: sales_speed_bonus is not tracked in genetic algorithm for simplicity
                     # Use modeledUnitsSoldAnHour with saturation adjustment
-                    if modeled_units > 0 and saturation > 0:
-                        saturation_factor = 1.0 + math.log(saturation) if saturation > 1.0 else 1.0
+                    if modeled_units > 0:
+                        if saturation > 1.0:
+                            saturation_factor = 1.0 + math.log(saturation)
+                        else:
+                            saturation_factor = 1.0
                         units_to_sell = (modeled_units / saturation_factor) * level
                     else:
                         continue
