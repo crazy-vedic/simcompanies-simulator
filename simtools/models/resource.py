@@ -213,7 +213,7 @@ class Resource:
 
         Args:
             market: MarketData instance containing prices and transport info.
-            retail_info: all the retail info
+            retail_data: all the retail info
             quality: Quality level for retail data lookup (default: 0).
             building_level: Level of the retail building (default: 1).
             sales_speed_bonus: Sales speed bonus as decimal (e.g., 0.01 for 1%).
