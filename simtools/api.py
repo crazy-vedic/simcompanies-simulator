@@ -58,8 +58,9 @@ def _save_cache(filename: str, data: dict | list) -> None:
     try:
         with open(cache_path, "w") as f:
             json.dump({"data": data, "timestamp": time.time()}, f)
-    except Exception:
-        pass  # Silently fail if cache can't be written
+        console.log(f"[green]Cache saved successfully: {cache_path}[/green]")
+    except Exception as e:
+        console.log(f"[red]Failed to save cache: {e}[/red]")
 
 
 def _is_cache_valid(timestamp: float) -> bool:
@@ -102,11 +103,11 @@ class SimcoAPI:
         """
         cache_key = f"resources_realm_{self.base_url.split('/')[-1]}"
         cached_data, timestamp = _load_cache(cache_key)
-        
+
         if _is_cache_valid(timestamp) and cached_data is not None:
             console.log("[cyan]Using cached resources data[/cyan]")
             return cached_data  # type: ignore
-        
+
         url = f"{self.base_url}/resources"
         all_resources = []
 
@@ -121,15 +122,14 @@ class SimcoAPI:
 
                 # If disable_pagination worked, it might return a list or a dict with all resources
                 if isinstance(data, list):
+                    _save_cache(cache_key, {"resources": data})
                     return {"resources": data}
                 if isinstance(data, dict) and "resources" in data:
                     # Check if totalRecords matches len(resources)
                     metadata = data.get("metadata", {})
                     total_records = metadata.get("totalRecords")
                     if total_records is not None and len(data["resources"]) >= total_records:
-                        console.log(
-                            f"Fetched all {len(data['resources'])} resources with disable_pagination."
-                        )
+                        _save_cache(cache_key, data)
                         return data
             except Exception as e:
                 console.log(
@@ -152,9 +152,9 @@ class SimcoAPI:
                 current_page = metadata.get("currentPage", 1) + 1
                 last_page = metadata.get("lastPage", 1)
 
-            console.log(f"Fetched {len(all_resources)} resources via manual pagination.")
             result = {"resources": all_resources}
             _save_cache(cache_key, result)
+            console.log("[green]Resources saved to cache successfully.[/green]")
             return result
 
     def get_market_vwaps(self) -> list:
