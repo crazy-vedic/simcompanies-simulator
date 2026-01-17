@@ -813,7 +813,6 @@ def calculate_retail_units_per_hour(
         sales_speed_bonus: Sales speed bonus percentage (default: 0.0).
         acceleration_multiplier: Acceleration multiplier (default: 1.0).
         weather_multiplier: Weather multiplier (default: 1.0).
-        saturation: Market saturation (0-2, default: 0.0).
 
     Returns:
         Units sold per hour, or NaN if calculation is invalid.
