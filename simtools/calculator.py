@@ -107,6 +107,7 @@ def calculate_all_profits(
     market: MarketData,
     quality: int,
     config: ProfitConfig,
+    retail_data: dict
 ) -> list[dict]:
     """Calculate profits for all resources.
 
@@ -115,6 +116,7 @@ def calculate_all_profits(
         market: MarketData instance containing prices and transport info.
         quality: Quality level for prices.
         config: Profit calculation configuration.
+        retail_data: Raw retail info data dict keyed by dbLetter (resource ID).
 
     Returns:
         List of profit dictionaries sorted by profit_per_hour descending.
@@ -123,19 +125,58 @@ def calculate_all_profits(
 
     for res in resources:
         selling_price = market.get_price(res.id, quality)
-        if selling_price == 0:
-            continue
+        if selling_price > 0:
+            # Calculate market profit (existing behavior)
+            # Input costs use market exchange prices (for resources that have inputs)
+            profit_data = res.calculate_profit(
+                selling_price=selling_price,
+                market=market,
+                quality=quality,
+                abundance=config.abundance,
+                admin_overhead=config.admin_overhead,
+                is_contract=config.is_contract,
+                has_robots=config.has_robots,
+            )
+            profits.append(profit_data)
 
-        profit_data = res.calculate_profit(
-            selling_price=selling_price,
-            market=market,
-            quality=quality,
-            abundance=config.abundance,
-            admin_overhead=config.admin_overhead,
-            is_contract=config.is_contract,
-            has_robots=config.has_robots,
-        )
-        profits.append(profit_data)
+        # Add retail profit if resource has retail info
+        if res.retail_info:
+            # Process retail data: merge resource retailInfo with API retail info
+            # temp is keyed by dbLetter (resource ID), so use res.id to lookup
+            retail_info_from_api = retail_data.get(res.id, {})
+            
+            # Find retail info entry for the requested quality
+            retail_info_entry = None
+            for ri in res.retail_info:
+                if ri.get("quality") == quality:
+                    retail_info_entry = ri.copy()  # Start with base retail info
+                    # Merge/override with API data if available
+                    if retail_info_from_api:
+                        # Update with API data (saturation, averagePrice, etc.)
+                        retail_info_entry.update({
+                            "saturation": retail_info_from_api.get("saturation", retail_info_entry.get("saturation", 1.0)),
+                            "averagePrice": retail_info_from_api.get("averagePrice", retail_info_entry.get("averagePrice", 0)),
+                        })
+                    break
+            
+            if retail_info_from_api:
+                # For retail, input cost is the market exchange price (cost to buy the product)
+                # This is the price you pay to acquire the product to sell it
+                input_cost_per_unit = selling_price if selling_price > 0 else 0.0
+                if retail_info_from_api.get('retailData')[0].get('amountSoldRestaurant',0)>0: continue
+                retail_profit = res.calculate_retail_profit(
+                    market=market,
+                    retail_data=retail_info_from_api | retail_info_entry,
+                    quality=quality,
+                    building_level=1,
+                    sales_speed_bonus=config.sales_speed_bonus,
+                    admin_overhead=config.admin_overhead,
+                    input_cost_per_unit=input_cost_per_unit,
+                )
+                
+                # Add retail entry (consistent with market entries - add regardless of profitability)
+                retail_profit["is_retail"] = True
+                profits.append(retail_profit)
 
     # Sort by profit descending
     profits.sort(key=lambda x: x["profit_per_hour"], reverse=True)
@@ -742,3 +783,104 @@ def calculate_upgrade_recommendations(
     # Sort by marginal ROI descending
     recommendations.sort(key=lambda x: x["marginal_roi"], reverse=True)
     return recommendations
+
+
+def calculate_retail_units_per_hour(
+    retail_info: dict,
+    price: float,
+    quality: int,
+    building_level: int,
+    sales_speed_bonus: float = 0.0,
+    acceleration_multiplier: float = 1.0,
+    weather_multiplier: float = 1.0,
+) -> float:
+    """Calculate units sold per hour for retail sales.
+
+    This implements the retail calculation formula from Sim Companies:
+    - rIr: Core demand calculation based on price, quality, saturation
+    - uoe: Time per 100 units with building level and bonuses
+    - ufe: Convert time to units per hour
+
+    Args:
+        retail_info: Retail info dict with keys:
+            - buildingLevelsNeededPerUnitPerHour
+            - modeledProductionCostPerUnit
+            - modeledStoreWages
+            - modeledUnitsSoldAnHour
+        price: Retail price per unit.
+        quality: Quality level (0-12).
+        building_level: Building level.
+        sales_speed_bonus: Sales speed bonus percentage (default: 0.0).
+        acceleration_multiplier: Acceleration multiplier (default: 1.0).
+        weather_multiplier: Weather multiplier (default: 1.0).
+        saturation: Market saturation (0-2, default: 0.0).
+
+    Returns:
+        Units sold per hour, or NaN if calculation is invalid.
+    """
+    PROFIT_PER_BUILDING_LEVEL = 320
+    RETAIL_MODELING_QUALITY_WEIGHT = 0.3
+
+    # Extract modeled constants
+    building_levels_needed = retail_info.get("buildingLevelsNeededPerUnitPerHour", None)
+    production_cost = retail_info.get("modeledProductionCostPerUnit", None)
+    store_wages = retail_info.get("modeledStoreWages", None)
+    modeled_units = retail_info.get("modeledUnitsSoldAnHour", None)
+    if not (building_levels_needed and production_cost and store_wages and modeled_units):
+        return float("nan")
+
+    # rIr calculation
+    # Saturation factor
+    saturation = retail_info.get("saturation", 0)
+    p = max(min(2 - saturation, 2), 0)
+    h = max(0.9, p / 2 + 0.5)
+    f = quality / 12.0
+
+    # Profit pressure calculation
+    g = (
+        PROFIT_PER_BUILDING_LEVEL
+        * (building_levels_needed * modeled_units + 1)
+        * (p / 2 * (1 + f * RETAIL_MODELING_QUALITY_WEIGHT))
+        + store_wages
+    )
+
+    # Effective units
+    v = modeled_units * h
+    if modeled_units == 0:
+        return float("nan")
+    # Cost-adjusted demand base
+    b = production_cost + (g + store_wages) / v
+
+    # Demand curve (using price - b, not price - production_cost)
+    alpha = (store_wages + g) / ((b - production_cost) ** 2)
+    demand_curve = g - ((price - b) ** 2) * alpha
+
+    # Check for invalid demand curve
+    if demand_curve <= 0:
+        return float("nan")
+
+    # Time demand calculation (aIr)
+    # Note: The original code passes units=100 as a constant to aIr, not acceleration_multiplier
+    # This is a fixed constant in the formula, separate from the acceleration_multiplier
+    # which is applied later in uoe
+    UNITS_CONSTANT = 100
+    d = (
+        (UNITS_CONSTANT * ((price - production_cost) * 3600)) - store_wages
+    ) / (demand_curve + store_wages)
+
+    # Check for invalid time
+    if d <= 0:
+        return float("nan")
+    
+    # uoe calculation: seconds per 100 units
+    seconds_per_100_units = (
+        (d / building_level / acceleration_multiplier)
+        * (1 - sales_speed_bonus / 100.0)
+        / weather_multiplier
+    )
+
+    # ufe calculation: convert to units per hour
+    if seconds_per_100_units <= 0:
+        return float("nan")
+
+    return 100 * 3600 / seconds_per_100_units

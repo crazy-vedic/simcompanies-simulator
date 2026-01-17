@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import argparse
 import json
+import math
 from pathlib import Path
 
 from rich import box
@@ -20,6 +21,7 @@ from simtools.calculator import (
     calculate_company_building_stats,
     calculate_level_roi,
     calculate_lifecycle_roi,
+    calculate_retail_units_per_hour,
     calculate_upgrade_recommendations,
     compare_market_vs_contract,
     simulate_prospecting,
@@ -69,18 +71,6 @@ def load_json_list(filepath: Path) -> list[str]:
         return []
     with open(filepath, "r") as f:
         return json.load(f)
-
-
-def save_json(data, filename: str) -> None:
-    """Save data to a JSON file in the workspace root.
-
-    Args:
-        data: Data to save.
-        filename: Name of the output file.
-    """
-    with open(filename, "w") as f:
-        json.dump(data, f, indent=2)
-    console.log(f"Data saved to [cyan]{filename}[/cyan]")
 
 
 def display_prospecting_results(results: dict) -> None:
@@ -150,6 +140,7 @@ def display_profits_table(
     profits: list[dict],
     transport_price: float,
     config: ProfitConfig,
+    building_level: int = 1,
     search_terms: list[str] | None = None,
     building_terms: list[str] | None = None,
 ) -> None:
@@ -159,18 +150,19 @@ def display_profits_table(
         profits: List of profit dictionaries.
         transport_price: Price per transport unit.
         config: Profit calculation configuration.
+        building_level: Building level used for calculations.
         search_terms: Search terms used for filtering (for header).
         building_terms: Building terms used for filtering (for header).
     """
     # Build header title
-    header_title = "Top 30 Most Profitable Resources"
+    header_title = f"Top 30 Most Profitable Resources (Level {building_level})"
     if search_terms or building_terms:
         parts = []
         if search_terms:
             parts.append(f"search: '{', '.join(search_terms)}'")
         if building_terms:
             parts.append(f"building: '{', '.join(building_terms)}'")
-        header_title = f"Results for {' & '.join(parts)}"
+        header_title = f"Results for {' & '.join(parts)} (Level {building_level})"
 
     if config.is_contract:
         header_title += " (Direct Contract Mode)"
@@ -204,14 +196,21 @@ def display_profits_table(
         abundance_mark = " [bold yellow](*)[/bold yellow]" if p["is_abundance_res"] else ""
 
         profit_style = "bold green" if p["profit_per_hour"] >= 0 else "bold red"
+        
+        # Scale values by building level
+        profit_hr = p['profit_per_hour'] * building_level
+        revenue_hr = p['revenue_per_hour'] * building_level
+        fee_hr = p['market_fee_per_hour'] * building_level
+        costs_hr = p['costs_per_hour'] * building_level
+        transport_hr = p['transport_costs_per_hour'] * building_level
 
         table.add_row(
             f"{p['name']}{abundance_mark}",
-            f"[{profit_style}]${p['profit_per_hour']:,.2f}[/{profit_style}]",
-            f"${p['revenue_per_hour']:,.2f}",
-            f"${p['market_fee_per_hour']:,.2f}",
-            f"${p['costs_per_hour']:,.2f}",
-            f"${p['transport_costs_per_hour']:,.2f}{warn}",
+            f"[{profit_style}]${profit_hr:,.2f}[/{profit_style}]",
+            f"${revenue_hr:,.2f}",
+            f"${fee_hr:,.2f}",
+            f"${costs_hr:,.2f}",
+            f"${transport_hr:,.2f}{warn}",
         )
 
     console.print(table)
@@ -545,6 +544,163 @@ def display_company_analysis(
         )
 
 
+def display_retail_results(
+    resource_name: str,
+    units_per_hour: float,
+    price: float,
+    quality: int,
+    building_level: int,
+    sales_speed_bonus: float,
+    retail_info: dict | None = None,
+) -> None:
+    """Display retail calculation results.
+
+    Args:
+        resource_name: Name of the resource being retailed.
+        units_per_hour: Calculated units sold per hour.
+        price: Retail price per unit.
+        quality: Quality level used.
+        building_level: Building level used.
+        sales_speed_bonus: Sales speed bonus percentage used.
+        retail_info: Retail info dict used for calculation (optional).
+    """
+    console.print("\n[bold blue]═══════════════════════════════════════════════════════════════[/bold blue]")
+    console.print("[bold blue]              RETAIL CALCULATION RESULTS                       [/bold blue]")
+    console.print("[bold blue]═══════════════════════════════════════════════════════════════[/bold blue]\n")
+
+    table = Table(
+        show_header=True,
+        header_style="bold white on blue",
+        box=box.ROUNDED,
+        border_style="bright_black",
+    )
+    table.add_column("Parameter", style="bold white", width=30)
+    table.add_column("Value", justify="right", style="cyan")
+
+    table.add_row("Resource", resource_name)
+    table.add_row("Retail Price", f"${price:.2f}")
+    table.add_row("Quality", f"Q{quality}")
+    table.add_row("Building Level", str(building_level))
+    table.add_row("Sales Speed Bonus", f"{sales_speed_bonus:.1f}%")
+    if retail_info:
+        table.add_row("Market Saturation", f"{retail_info.get('saturation', 0):.4f}")
+
+    if math.isnan(units_per_hour):
+        table.add_row("Units/Hour", "[bold red]Invalid (NaN)[/bold red]")
+        table.add_row("Units/Day", "[bold red]Invalid[/bold red]")
+        table.add_row("Revenue/Hour", "[bold red]Invalid[/bold red]")
+        table.add_row("Revenue/Day", "[bold red]Invalid[/bold red]")
+    else:
+        units_per_day = units_per_hour * 24
+        revenue_per_hour = units_per_hour * price
+        revenue_per_day = units_per_day * price
+
+        table.add_row("Units/Hour", f"{units_per_hour:.3f}")
+        table.add_row("Units/Day", f"{units_per_day:.3f}")
+        table.add_row("Revenue/Hour", f"${revenue_per_hour:,.2f}")
+        table.add_row("Revenue/Day", f"${revenue_per_day:,.2f}")
+
+    console.print(table)
+
+
+def display_retail_table(
+    profits: list[dict],
+    config: ProfitConfig,
+    building_level: int = 1,
+) -> None:
+    """Display retail profits table ordered by PPH.
+
+    Args:
+        profits: List of retail profit dictionaries.
+        config: Profit calculation configuration.
+        building_level: Building level used for calculations.
+    """
+    console.print(f"\n[bold blue]Retail Sales - Ordered by Profit/Hour (Level {building_level})[/bold blue]")
+    console.print(
+        f"Quality: [bold cyan]{config.quality}[/bold cyan] | "
+        f"Admin Overhead: [bold cyan]{config.admin_overhead}%[/bold cyan] | "
+        f"Sales Speed Bonus: [bold cyan]{config.sales_speed_bonus * 100:.1f}%[/bold cyan]"
+    )
+
+    table = Table(
+        show_header=True,
+        header_style="bold white on blue",
+        box=box.ROUNDED,
+        border_style="bright_black",
+    )
+    table.add_column("Resource", style="bold white", width=25)
+    table.add_column("Profit/hr", justify="right")
+    table.add_column("Revenue/hr", justify="right", style="white")
+    table.add_column("Input Cost", justify="right", style="yellow")
+    table.add_column("Units/hr", justify="right", style="cyan")
+    table.add_column("Sell Price", justify="right", style="green")
+
+    for p in profits[:30]:  # Show top 30
+        # Extract retail-specific data
+        name = p["name"].replace(" (Retail)", "")  # Remove suffix for cleaner display
+        profit_style = "bold green" if p["profit_per_hour"] >= 0 else "bold red"
+        
+        units_sold = p.get("units_sold_per_hour", 0)
+        retail_price = p.get("retail_price", 0)
+        wages = p.get("wages_per_hour", 0)
+        
+        # Calculate input cost per hour from total costs
+        input_cost_per_hour = p["costs_per_hour"] - wages
+        
+        table.add_row(
+            name,
+            f"[{profit_style}]${p['profit_per_hour']:,.2f}[/{profit_style}]",
+            f"${p['revenue_per_hour']:,.2f}",
+            f"${input_cost_per_hour:,.2f}",
+            f"{units_sold:.2f}",
+            f"${retail_price:.2f}",
+        )
+
+    console.print(table)
+
+
+def display_scenario_table(rows: list[dict], building_level: int) -> None:
+    """Display scenario comparisons for production/retail modes."""
+    if not rows:
+        console.print("[yellow]No scenarios to display.[/yellow]")
+        return
+
+    table = Table(
+        title=f"Scenario Comparison (Level {building_level})",
+        show_header=True,
+        header_style="bold white on blue",
+        box=box.ROUNDED,
+        border_style="bright_black",
+    )
+    table.add_column("Mode", style="bold white", width=12)
+    table.add_column("Resource", style="bold white", width=18)
+    table.add_column("Q", justify="center", style="cyan")
+    table.add_column("Price", justify="right")
+    table.add_column("Profit/hr", justify="right")
+    table.add_column("Revenue/hr", justify="right")
+    table.add_column("Costs/hr", justify="right")
+    table.add_column("Fee/hr", justify="right")
+    table.add_column("Transp/hr", justify="right")
+    table.add_column("Units/hr", justify="right")
+
+    for row in rows:
+        profit_style = "bold green" if row["profit_per_hour"] >= 0 else "bold red"
+        table.add_row(
+            row["mode"],
+            row["resource"],
+            f"Q{row['quality']}",
+            f"${row['price']:.2f}",
+            f"[{profit_style}]${row['profit_per_hour']:,.2f}[/{profit_style}]",
+            f"${row['revenue_per_hour']:,.2f}",
+            f"${row['costs_per_hour']:,.2f}",
+            f"${row['fee_per_hour']:,.2f}",
+            f"${row['transport_per_hour']:,.2f}",
+            f"{row['units_per_hour']:.2f}",
+        )
+
+    console.print(table)
+
+
 def display_upgrade_recommendations(
     recommendations: list[dict],
     config: ProfitConfig,
@@ -844,8 +1000,9 @@ def parse_args() -> argparse.Namespace:
         help="Exclude seasonal resources",
     )
 
-    # Main parser
+    # Main parser (includes common options so they work before subcommands)
     parser = argparse.ArgumentParser(
+        parents=[parent_parser],
         description="Simtools - Sim Companies calculation toolkit",
         formatter_class=argparse.RawDescriptionHelpFormatter,
     )
@@ -854,40 +1011,6 @@ def parse_args() -> argparse.Namespace:
         "--version",
         action="version",
         version=f"%(prog)s {__version__}",
-    )
-    
-    # Add common flags at top level for backwards compatibility
-    # NOTE: These are intentionally duplicated from parent_parser to support
-    # usage without subcommands (e.g., "simtools -a 85" defaults to profit)
-    parser.add_argument(
-        "-q", "--quality", type=int, default=0, help="Quality level (default: 0)"
-    )
-    parser.add_argument(
-        "-a",
-        "--abundance",
-        type=float,
-        default=90,
-        help="Abundance percentage for mine/well resources (default: 90)",
-    )
-    parser.add_argument(
-        "-c",
-        "--contract",
-        action="store_true",
-        help="Direct contract mode (0%% market fee, 50%% transport)",
-    )
-    parser.add_argument(
-        "-r",
-        "--robots",
-        action="store_true",
-        help="Apply 3%% wage reduction",
-    )
-    parser.add_argument(
-        "-o",
-        "--overhead",
-        type=float,
-        default=0,
-        dest="admin_overhead",
-        help="Admin overhead percentage (default: 0)",
     )
     parser.add_argument(
         "-b", "--building", type=str, nargs="+", help="Filter by building name"
@@ -899,13 +1022,6 @@ def parse_args() -> argparse.Namespace:
         nargs="+",
         help="Search resources by name (case-insensitive)",
     )
-    parser.add_argument(
-        "-e",
-        "--no-seasonal",
-        action="store_true",
-        dest="exclude_seasonal",
-        help="Exclude seasonal resources",
-    )
     
     subparsers = parser.add_subparsers(dest="command", help="Available commands")
     
@@ -915,7 +1031,6 @@ def parse_args() -> argparse.Namespace:
     # profit subcommand - default/main functionality
     profit_parser = subparsers.add_parser(
         "profit",
-        parents=[parent_parser],
         help="Calculate production profits",
         description="Calculate and display production profits for resources",
     )
@@ -929,11 +1044,18 @@ def parse_args() -> argparse.Namespace:
         nargs="+",
         help="Search resources by name (case-insensitive)",
     )
+    profit_parser.add_argument(
+        "-l",
+        "--level",
+        type=int,
+        default=1,
+        dest="building_level",
+        help="Building level for production calculations (default: 1)",
+    )
 
     # roi subcommand
     roi_parser = subparsers.add_parser(
         "roi",
-        parents=[parent_parser],
         help="Building ROI analysis",
         description="Analyze return on investment for buildings",
     )
@@ -959,7 +1081,6 @@ def parse_args() -> argparse.Namespace:
     # lifecycle subcommand
     lifecycle_parser = subparsers.add_parser(
         "lifecycle",
-        parents=[parent_parser],
         help="Abundance decay/lifecycle analysis",
         description="Calculate lifecycle ROI for abundance resources",
     )
@@ -1030,7 +1151,6 @@ def parse_args() -> argparse.Namespace:
     # compare subcommand
     compare_parser = subparsers.add_parser(
         "compare",
-        parents=[parent_parser],
         help="Compare market vs contract sales",
         description="Compare selling on the market vs selling via contracts with a custom contract price",
     )
@@ -1051,10 +1171,65 @@ def parse_args() -> argparse.Namespace:
         help="Contract price per unit (e.g., 97.5)",
     )
 
+    # scenario subcommand (compare multiple custom price/quality pairs)
+    scenario_parser = subparsers.add_parser(
+        "scenario",
+        help="Compare custom price/quality scenarios for production and retail",
+        description=(
+            "Evaluate profit/revenue for a resource across multiple (quality, price) pairs "
+            "with optional retail/production filtering"
+        ),
+    )
+    scenario_parser.add_argument(
+        "resource",
+        type=str,
+        nargs="+",
+        help="Resource name(s) (case-insensitive)",
+    )
+    scenario_parser.add_argument(
+        "-q",
+        "--quality",
+        dest="scenario_quality",
+        type=int,
+        action="append",
+        required=True,
+        help="Quality for a scenario (repeatable, order must match --price)",
+    )
+    scenario_parser.add_argument(
+        "-p",
+        "--price",
+        dest="scenario_price",
+        type=float,
+        action="append",
+        required=True,
+        help="Price for a scenario (repeatable, order must match --quality)",
+    )
+    scenario_parser.add_argument(
+        "-l",
+        "--level",
+        type=int,
+        default=1,
+        dest="building_level",
+        help="Building level to use (default: 1)",
+    )
+    scenario_parser.add_argument(
+        "-R",
+        "--retail",
+        dest="retail_only",
+        action="store_true",
+        help="Show only retail scenarios",
+    )
+    scenario_parser.add_argument(
+        "-P",
+        "--production",
+        dest="production_only",
+        action="store_true",
+        help="Show only production scenarios",
+    )
+
     # genetic subcommand
     genetic_parser = subparsers.add_parser(
         "genetic",
-        parents=[parent_parser],
         help="Genetic algorithm optimization",
         description="Use genetic algorithm to find optimal building configuration for maximum profit",
     )
@@ -1133,6 +1308,29 @@ def parse_args() -> argparse.Namespace:
         help="Penalty factor for budget overage (default: 2.0)",
     )
 
+    # retail subcommand
+    retail_parser = subparsers.add_parser(
+        "retail",
+        help="Retail sales calculation",
+        description="Calculate units sold per hour for retail sales and profit analysis",
+    )
+    retail_parser.add_argument(
+        "-i",
+        "--item",
+        type=str,
+        nargs="+",
+        required=False,
+        dest="item_name",
+        help="Resource name(s) to calculate retail for (case-insensitive). If not provided, shows ordered list of all retail items",
+    )
+    retail_parser.add_argument(
+        "-l",
+        "--level",
+        type=int,
+        default=1,
+        dest="building_level",
+        help="Building level (default: 1)",
+    )
     # analyze subcommand
     analyze_parser = subparsers.add_parser(
         "analyze",
@@ -1174,6 +1372,194 @@ def main() -> None:
     if args.command == "prospect":
         results = simulate_prospecting(args.abundance / 100, args.time, args.slots)
         display_prospecting_results(results)
+        return
+
+    # Handle retail command
+    if args.command == "retail":
+        # Load data files
+        abundance_resources = load_json_list(get_data_path("abundance_resources.json"))
+        seasonal_resources = load_json_list(get_data_path("seasonal_resources.json"))
+        buildings = Building.load_all(get_data_path("buildings.json"), include_retail=True)
+        resource_to_building = build_resource_to_building_map(buildings)
+
+        # Fetch API data
+        api = SimcoAPI(realm=0)
+        try:
+            resources_data = api.get_resources()
+            raw_resources = resources_data.get("resources", [])
+            
+            vwaps_data = api.get_market_vwaps()
+            market = MarketData.from_api_response(
+                vwaps_data=vwaps_data,
+                resources_data=raw_resources,
+            )
+
+            # Fetch retail info from API
+            retail_info_api_list = api.get_retail_info()
+            retail_info_api = {}
+            for r in retail_info_api_list:
+                if isinstance(r, dict) and "dbLetter" in r:
+                    retail_info_api[r["dbLetter"]] = r
+
+            # Create Resource objects
+            resources = [
+                Resource.from_api_data(
+                    data,
+                    abundance_resources=[r.lower() for r in abundance_resources],
+                    seasonal_resources=[r.lower() for r in seasonal_resources],
+                )
+                for data in raw_resources
+            ]
+
+            # Link resources to buildings
+            resource_by_name = {r.name.lower(): r for r in resources}
+            for building in buildings:
+                building.link_resources(resource_by_name)
+
+            # Set building names on resources
+            for res in resources:
+                building_name = resource_to_building.get(res.name.lower())
+                if building_name:
+                    res.building_name = building_name
+
+            # If -i/--item specified, show details for specific items
+            if hasattr(args, 'item_name') and args.item_name:
+                item_names_lower = [name.lower() for name in args.item_name]
+                for item_name_lower in item_names_lower:
+                    # Find resource
+                    resource = resource_by_name.get(item_name_lower)
+                    if not resource:
+                        console.print(f"[bold red]Resource '{item_name_lower}' not found.[/bold red]")
+                        continue
+
+                    if not resource.retail_info:
+                        console.print(f"[bold red]{resource.name} has no retail info.[/bold red]")
+                        continue
+
+                    # Get retail info for quality
+                    retail_info_entry = None
+                    for ri in resource.retail_info:
+                        if ri.get("quality") == args.quality:
+                            retail_info_entry = ri.copy()
+                            break
+                    
+                    if not retail_info_entry:
+                        console.print(f"[bold red]No retail info for {resource.name} at Q{args.quality}.[/bold red]")
+                        continue
+
+                    # Merge with API data
+                    api_data = retail_info_api.get(resource.id, {})
+                    if api_data:
+                        retail_info_entry.update({
+                            "saturation": api_data.get("saturation", retail_info_entry.get("saturation", 1.0)),
+                            "averagePrice": api_data.get("averagePrice", retail_info_entry.get("averagePrice", 0)),
+                        })
+
+                    retail_price = retail_info_entry.get("averagePrice", 0)
+                    if retail_price <= 0:
+                        console.print(f"[bold red]No retail price for {resource.name}.[/bold red]")
+                        continue
+
+                    input_cost = market.get_price(resource.id, args.quality)
+                    building_level = getattr(args, 'building_level', 1)
+
+                    # Calculate units per hour
+                    units_per_hour = calculate_retail_units_per_hour(
+                        retail_info=retail_info_entry,
+                        price=retail_price,
+                        quality=args.quality,
+                        building_level=building_level,
+                        sales_speed_bonus=getattr(args, 'sales_speed_bonus', 0.0),
+                        acceleration_multiplier=getattr(args, 'acceleration_multiplier', 1.0),
+                        weather_multiplier=getattr(args, 'weather_multiplier', 1.0),
+                    )
+
+                    # Calculate profit
+                    sales_wages = retail_info_entry.get("salesWages", 0)
+                    admin_overhead = getattr(args, 'admin_overhead', 0.0)
+                    wages_per_hour = sales_wages * building_level * (1.0 + admin_overhead / 100.0)
+                    revenue_per_hour = retail_price * units_per_hour
+                    costs_per_hour = wages_per_hour + (input_cost * units_per_hour)
+                    profit_per_hour = revenue_per_hour - costs_per_hour
+
+                    # Display detailed results
+                    display_retail_results(
+                        resource_name=resource.name,
+                        units_per_hour=units_per_hour,
+                        price=retail_price,
+                        quality=args.quality,
+                        building_level=building_level,
+                        sales_speed_bonus=getattr(args, 'sales_speed_bonus', 0.0),
+                        retail_info=retail_info_entry,
+                    )
+                    console.print(f"\n[bold cyan]Profit Information:[/bold cyan]")
+                    console.print(f"  Input Cost: ${input_cost:.2f}")
+                    console.print(f"  Profit/Hour: ${profit_per_hour:,.2f}")
+                    console.print(f"  Profit/Day: ${profit_per_hour * 24:,.2f}\n")
+            else:
+                # Show ordered list of all retail items by PPH
+                config = ProfitConfig(
+                    quality=args.quality,
+                    abundance=getattr(args, 'abundance', 90.0),
+                    admin_overhead=getattr(args, 'admin_overhead', 0.0),
+                    is_contract=False,
+                    has_robots=getattr(args, 'robots', False),
+                    sales_speed_bonus=getattr(args, 'sales_speed_bonus', 0.0) / 100.0,
+                )
+
+                retail_profits = []
+                for res in resources:
+                    if not res.retail_info:
+                        continue
+
+                    retail_info_entry = None
+                    for ri in res.retail_info:
+                        if ri.get("quality") == args.quality:
+                            retail_info_entry = ri.copy()
+                            break
+                    
+                    if not retail_info_entry:
+                        continue
+
+                    api_data = retail_info_api.get(res.id, {})
+                    if not api_data:
+                        continue
+
+                    # Skip restaurant items
+                    if api_data.get('retailData', [{}])[0].get('amountSoldRestaurant', 0) > 0:
+                        continue
+
+                    retail_info_entry.update({
+                        "saturation": api_data.get("saturation", retail_info_entry.get("saturation", 1.0)),
+                        "averagePrice": api_data.get("averagePrice", retail_info_entry.get("averagePrice", 0)),
+                    })
+
+                    retail_price = retail_info_entry.get("averagePrice", 0)
+                    if retail_price <= 0:
+                        continue
+
+                    input_cost = market.get_price(res.id, args.quality)
+                    building_level = getattr(args, 'building_level', 1)
+
+                    retail_profit = res.calculate_retail_profit(
+                        market=market,
+                        retail_data=retail_info_entry | api_data,
+                        quality=args.quality,
+                        building_level=building_level,
+                        sales_speed_bonus=config.sales_speed_bonus,
+                        admin_overhead=config.admin_overhead,
+                        input_cost_per_unit=input_cost,
+                    )
+                    retail_profits.append(retail_profit)
+
+                # Sort by PPH
+                retail_profits.sort(key=lambda x: x["profit_per_hour"], reverse=True)
+
+                # Display table
+                display_retail_table(retail_profits, config, building_level=getattr(args, 'building_level', 1))
+        except Exception as exc:
+            console.print(f"[bold red]Error: {exc}[/bold red]")
+            raise
         return
 
     # Handle debug commands
@@ -1222,10 +1608,12 @@ def main() -> None:
 
         vwaps_data = api.get_market_vwaps()
 
-        # Save API data
-        save_json(resources_data, "resources.json")
-        save_json(vwaps_data, "vwaps.json")
-
+        # Try to fetch retail info (optional, may fail)
+        temp_retail_data = api.get_retail_info()
+        retail_info_api = {}
+        for r in temp_retail_data:
+            if isinstance(r, dict) and "dbLetter" in r:
+                retail_info_api[r["dbLetter"]] = r
         # Build MarketData from API response
         market = MarketData.from_api_response(
             vwaps_data=vwaps_data,
@@ -1287,9 +1675,115 @@ def main() -> None:
             admin_overhead=args.admin_overhead,
             is_contract=args.contract,
             has_robots=args.robots,
+            sales_speed_bonus=args.sales_speed_bonus / 100.0,  # Convert percentage to decimal
         )
 
-        profits = calculate_all_profits(filtered_resources, market, args.quality, config)
+        # Process temp_retail_data: it's already in the right format (dbLetter -> retail_info_dict)
+        # Just pass it as temp parameter (raw retail data dict)
+        profits = calculate_all_profits(filtered_resources, market, args.quality, config, retail_data=retail_info_api)
+
+        # Handle scenario command (custom quality/price comparisons)
+        if args.command == "scenario":
+            qualities = args.scenario_quality or []
+            prices = args.scenario_price or []
+            if len(qualities) != len(prices):
+                console.print("[bold red]Error: provide the same number of -q/--quality and -p/--price values.[/bold red]")
+                return
+
+            building_level = getattr(args, "building_level", 1)
+            retail_only = getattr(args, "retail_only", False)
+            production_only = getattr(args, "production_only", False)
+
+            rows: list[dict] = []
+            scenario_pairs = list(zip(qualities, prices))
+
+            for name in [n.lower() for n in args.resource]:
+                res = resource_by_name.get(name)
+                if not res:
+                    console.print(f"[yellow]Warning: resource '{name}' not found.[/yellow]")
+                    continue
+
+                # Production scenarios
+                if not retail_only:
+                    for quality, price in scenario_pairs:
+                        prod = res.calculate_profit(
+                            selling_price=price,
+                            market=market,
+                            quality=quality,
+                            abundance=args.abundance,
+                            admin_overhead=args.admin_overhead,
+                            is_contract=args.contract,
+                            has_robots=args.robots,
+                        )
+                        rows.append(
+                            {
+                                "mode": "Production",
+                                "resource": res.name,
+                                "quality": quality,
+                                "price": price,
+                                "profit_per_hour": prod["profit_per_hour"] * building_level,
+                                "revenue_per_hour": prod["revenue_per_hour"] * building_level,
+                                "costs_per_hour": prod["costs_per_hour"] * building_level,
+                                "fee_per_hour": prod["market_fee_per_hour"] * building_level,
+                                "transport_per_hour": prod["transport_costs_per_hour"] * building_level,
+                                "units_per_hour": res.get_effective_production(args.abundance) * building_level,
+                            }
+                        )
+
+                # Retail scenarios
+                if not production_only and res.retail_info:
+                    for quality, price in scenario_pairs:
+                        retail_info_entry = None
+                        for ri in res.retail_info:
+                            if ri.get("quality") == quality:
+                                retail_info_entry = ri.copy()
+                                break
+
+                        if not retail_info_entry:
+                            continue
+
+                        api_data = retail_info_api.get(res.id, {})
+                        retail_info_entry.update({
+                            "saturation": api_data.get("saturation", retail_info_entry.get("saturation", 1.0)),
+                            "averagePrice": price,
+                        })
+
+                        input_cost = market.get_price(res.id, quality)
+
+                        units_per_hour = calculate_retail_units_per_hour(
+                            retail_info=retail_info_entry,
+                            price=price,
+                            quality=quality,
+                            building_level=building_level,
+                            sales_speed_bonus=getattr(args, "sales_speed_bonus", 0.0),
+                            acceleration_multiplier=getattr(args, "acceleration_multiplier", 1.0) if hasattr(args, "acceleration_multiplier") else 1.0,
+                            weather_multiplier=getattr(args, "weather_multiplier", 1.0) if hasattr(args, "weather_multiplier") else 1.0,
+                        )
+
+                        sales_wages = retail_info_entry.get("salesWages", 0)
+                        wages_per_hour = sales_wages * building_level * (1.0 + args.admin_overhead / 100.0)
+                        revenue_per_hour = price * units_per_hour
+                        costs_per_hour = wages_per_hour + (input_cost * units_per_hour)
+                        profit_per_hour = revenue_per_hour - costs_per_hour
+
+                        rows.append(
+                            {
+                                "mode": "Retail",
+                                "resource": res.name,
+                                "quality": quality,
+                                "price": price,
+                                "profit_per_hour": profit_per_hour,
+                                "revenue_per_hour": revenue_per_hour,
+                                "costs_per_hour": costs_per_hour,
+                                "fee_per_hour": 0.0,
+                                "transport_per_hour": 0.0,
+                                "units_per_hour": units_per_hour,
+                            }
+                        )
+
+            rows.sort(key=lambda x: x["profit_per_hour"], reverse=True)
+            display_scenario_table(rows, building_level)
+            return
 
         # Handle lifecycle command
         if args.command == "lifecycle":
@@ -1359,10 +1853,12 @@ def main() -> None:
 
         # Handle profit command (default display)
         if args.command == "profit":
+            building_level = getattr(args, "building_level", 1)
             display_profits_table(
                 profits, 
                 market.transport_price, 
-                config, 
+                config,
+                building_level=building_level,
                 search_terms=args.search if hasattr(args, "search") else None, 
                 building_terms=args.building if hasattr(args, "building") else None
             )

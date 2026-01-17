@@ -8,6 +8,8 @@ from typing import TYPE_CHECKING
 if TYPE_CHECKING:
     from simtools.models.market import MarketData
 
+# Import retail calculation function (avoid circular import by importing at function level)
+
 
 @dataclass
 class ResourceInput:
@@ -185,5 +187,143 @@ class Resource:
             "transport_costs_per_hour": transport_costs_per_hour,
             "missing_input_price": missing_input_price,
             "is_abundance_res": self.is_abundance,
+        }
+
+    def calculate_retail_profit(
+        self,
+        market: MarketData,
+        retail_data: dict,
+        quality: int = 0,
+        building_level: int = 1,
+        sales_speed_bonus: float = 0.0,
+        admin_overhead: float = 0.0,
+        input_cost_per_unit: float = 0.0,
+        acceleration_multiplier: float = 1.0,
+        weather_multiplier: float = 1.0,
+    ) -> dict:
+        """Calculate retail profit metrics for this resource.
+
+        Uses the reverse-engineered retail formula for accurate units/hour calculation.
+        Optimized with cached retail_info map for O(1) quality lookup.
+
+        Retail is a "virtual production" where:
+        - Input: The resource being sold
+        - Output: Money (profit from retail sales)
+        - No market fees (money goes directly to you)
+        - No transport costs on sales
+
+        Args:
+            market: MarketData instance containing prices and transport info.
+            retail_info: all the retail info
+            quality: Quality level for retail data lookup (default: 0).
+            building_level: Level of the retail building (default: 1).
+            sales_speed_bonus: Sales speed bonus as decimal (e.g., 0.01 for 1%).
+            admin_overhead: Administrative overhead percentage to add to wages.
+            input_cost_per_unit: Cost to acquire one unit of the resource.
+            acceleration_multiplier: Acceleration multiplier (default: 1.0).
+            weather_multiplier: Weather multiplier (default: 1.0).
+
+        Returns:
+            Dictionary with retail profit breakdown:
+                - profit_per_hour: Net profit per hour
+                - revenue_per_hour: Gross revenue per hour (retail_price * units_sold)
+                - wages_per_hour: Total wages per hour
+                - units_sold_per_hour: Units sold per hour (from accurate retail formula)
+                - revenue_less_wages_per_unit: Revenue less wages per unit
+                - retail_price: Retail selling price per unit
+                - missing_input_price: True if input cost is missing
+        """
+        # Extract retail data
+        retail_price = retail_data.get("averagePrice", 0)
+        sales_wages = retail_data.get("salesWages", 0)
+        
+        if retail_price <= 0:
+            return {
+                "name": f"{self.name} (Retail)",
+                "profit_per_hour": 0.0,
+                "revenue_per_hour": 0.0,
+                "wages_per_hour": 0.0,
+                "units_sold_per_hour": 0.0,
+                "revenue_less_wages_per_unit": 0.0,
+                "retail_price": retail_price,
+                "missing_input_price": True,
+                "is_abundance_res": False,
+                "market_fee_per_hour": 0.0,
+                "costs_per_hour": 0.0,
+                "transport_costs_per_hour": 0.0,
+            }
+
+        # Use the new optimized retail calculation function
+        # Import here to avoid circular dependency
+        from simtools.calculator import calculate_retail_units_per_hour
+        
+        # Note: sales_speed_bonus is passed as decimal (0.01 for 1%), but calculate_retail_units_per_hour
+        # expects percentage (1.0 for 1%), so we convert by multiplying by 100
+        sales_speed_bonus_percent = sales_speed_bonus * 100.0
+        
+        # Calculate units sold per hour using the reverse-engineered retail formula
+        # This is more accurate than the old approximation formula
+        units_sold_per_hour = calculate_retail_units_per_hour(
+            retail_info=retail_data,
+            price=retail_price,
+            quality=quality,
+            building_level=building_level,
+            sales_speed_bonus=sales_speed_bonus_percent,
+            acceleration_multiplier=acceleration_multiplier,
+            weather_multiplier=weather_multiplier,
+        )
+        
+        # Check for invalid calculation (NaN or non-positive)
+        if not (units_sold_per_hour > 0 and not math.isnan(units_sold_per_hour)):
+            return {
+                "name": f"{self.name} (Retail)",
+                "profit_per_hour": 0.0,
+                "revenue_per_hour": 0.0,
+                "wages_per_hour": 0.0,
+                "units_sold_per_hour": 0.0,
+                "revenue_less_wages_per_unit": 0.0,
+                "retail_price": retail_price,
+                "missing_input_price": False,  # Price is available, calculation just invalid
+                "is_abundance_res": False,
+                "market_fee_per_hour": 0.0,
+                "costs_per_hour": 0.0,
+                "transport_costs_per_hour": 0.0,
+            }
+
+        # Calculate wages per hour
+        # Always use salesWages with admin overhead (API doesn't know user's overhead)
+        wages_per_hour = sales_wages * building_level * (1.0 + admin_overhead / 100.0)
+
+        # Calculate revenue less wages per unit
+        if units_sold_per_hour > 0:
+            revenue_less_wages_per_unit = retail_price - (
+                wages_per_hour / units_sold_per_hour
+            )
+        else:
+            revenue_less_wages_per_unit = 0.0
+
+        # Calculate revenue per hour
+        revenue_per_hour = retail_price * units_sold_per_hour
+
+        # Calculate profit per hour
+        # profit = (retail_price * units_sold) - wages - (input_cost_per_unit * units_sold)
+        profit_per_hour = (
+            revenue_per_hour - wages_per_hour - (input_cost_per_unit * units_sold_per_hour)
+        )
+
+        return {
+            "name": f"{self.name} (Retail)",
+            "profit_per_hour": profit_per_hour,
+            "revenue_per_hour": revenue_per_hour,
+            "wages_per_hour": wages_per_hour,
+            "units_sold_per_hour": units_sold_per_hour,
+            "revenue_less_wages_per_unit": revenue_less_wages_per_unit,
+            "retail_price": retail_price,
+            "missing_input_price": input_cost_per_unit == 0.0,
+            "is_abundance_res": False,  # Retail entries are not abundance-based
+            # Add fields expected by display functions
+            "market_fee_per_hour": 0.0,  # No market fees for retail
+            "costs_per_hour": wages_per_hour + (input_cost_per_unit * units_sold_per_hour),
+            "transport_costs_per_hour": 0.0,  # No transport costs for retail sales
         }
 
