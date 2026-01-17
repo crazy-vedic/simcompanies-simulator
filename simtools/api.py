@@ -2,7 +2,6 @@
 
 import httpx
 import json
-import os
 import time
 from pathlib import Path
 from rich.console import Console
