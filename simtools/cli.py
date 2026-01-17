@@ -1035,6 +1035,14 @@ def parse_args() -> argparse.Namespace:
         description="Calculate and display production profits for resources",
     )
     profit_parser.add_argument(
+        "-l",
+        "--level",
+        type=int,
+        default=1,
+        dest="building_level",
+        help="Building level for production calculations (default: 1)",
+    )
+    profit_parser.add_argument(
         "-b", "--building", type=str, nargs="+", help="Filter by building name"
     )
     profit_parser.add_argument(
@@ -1043,14 +1051,6 @@ def parse_args() -> argparse.Namespace:
         type=str,
         nargs="+",
         help="Search resources by name (case-insensitive)",
-    )
-    profit_parser.add_argument(
-        "-l",
-        "--level",
-        type=int,
-        default=1,
-        dest="building_level",
-        help="Building level for production calculations (default: 1)",
     )
     profit_parser.add_argument(
         "--sales-speed-bonus",
@@ -1066,15 +1066,15 @@ def parse_args() -> argparse.Namespace:
         description="Analyze return on investment for buildings",
     )
     roi_parser.add_argument(
-        "-b", "--building", type=str, nargs="+", help="Filter by building name"
-    )
-    roi_parser.add_argument(
         "-l",
         "--level",
         type=int,
         default=20,
         dest="max_level",
         help="Maximum building level (default: 20)",
+    )
+    roi_parser.add_argument(
+        "-b", "--building", type=str, nargs="+", help="Filter by building name"
     )
     roi_parser.add_argument(
         "-p",
@@ -1097,15 +1097,15 @@ def parse_args() -> argparse.Namespace:
         description="Calculate lifecycle ROI for abundance resources",
     )
     lifecycle_parser.add_argument(
-        "-b", "--building", type=str, nargs="+", help="Filter by building name"
-    )
-    lifecycle_parser.add_argument(
         "-l",
         "--level",
         type=int,
         default=20,
         dest="max_level",
         help="Maximum building level (default: 20)",
+    )
+    lifecycle_parser.add_argument(
+        "-b", "--building", type=str, nargs="+", help="Filter by building name"
     )
     lifecycle_parser.add_argument(
         "-t",
@@ -1440,6 +1440,10 @@ def main() -> None:
                 if building_name:
                     res.building_name = building_name
 
+            # Exclude seasonal resources if requested
+            if getattr(args, 'exclude_seasonal', False):
+                resources = [r for r in resources if not r.is_seasonal]
+
             # If -i/--item specified, show details for specific items
             if hasattr(args, 'item_name') and args.item_name:
                 item_names_lower = [name.lower() for name in args.item_name]
@@ -1693,7 +1697,7 @@ def main() -> None:
             admin_overhead=args.admin_overhead,
             is_contract=args.contract,
             has_robots=args.robots,
-            sales_speed_bonus=args.sales_speed_bonus / 100.0,  # Convert percentage to decimal
+            sales_speed_bonus=getattr(args, 'sales_speed_bonus', 0.0) / 100.0,  # Convert percentage to decimal
         )
 
         # Process temp_retail_data: it's already in the right format (dbLetter -> retail_info_dict)
