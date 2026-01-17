@@ -93,6 +93,26 @@ uv run main.py -V
 ```
 
 ### Commands
+#### `retail` - Retail sales calculation
+Calculate units sold per hour for retail sales and profit analysis.
+
+**Options:**
+- `-i`, `--item`: Resource name(s) to calculate retail for (case-insensitive). If not provided, shows ordered list of all retail items.
+- `-l`, `--level`: Building level (default: 1)
+- `--sales-speed-bonus`: Sales speed bonus percentage (default: 0.0)
+- All common options: `-q`, `--quality`, `-a`, `--abundance`, `-c`, `--contract`, `-r`, `--robots`, `-o`, `--overhead`, `-e`, `--no-seasonal`
+
+#### `scenario` - Compare custom price/quality scenarios
+Evaluate profit/revenue for a resource across multiple (quality, price) pairs with optional retail/production filtering.
+
+**Options:**
+- `resource`: Resource name(s) (case-insensitive, positional argument)
+- `-q`, `--quality`: Quality for a scenario (repeatable, order must match --price)
+- `-p`, `--price`: Price for a scenario (repeatable, order must match --quality)
+- `-l`, `--level`: Building level to use (default: 1)
+- `-R`, `--retail`: Show only retail scenarios
+- `-P`, `--production`: Show only production scenarios
+- All common options: `-a`, `--abundance`, `-c`, `--contract`, `-r`, `--robots`, `-o`, `--overhead`, `-e`, `--no-seasonal`
 
 Simtools uses a subcommand structure for better organization:
 
@@ -108,6 +128,8 @@ Calculate and display production profits for resources.
 - `-r`, `--robots`: Apply 3% wage reduction
 - `-o`, `--overhead`: Admin overhead percentage (default: 0)
 - `-e`, `--no-seasonal`: Exclude seasonal resources
+- `-l`, `--level`: Building level for production calculations (default: 1)
+- `--sales-speed-bonus`: Sales speed bonus percentage (default: 0.0)
 
 #### `roi` - Building ROI analysis
 Analyze return on investment for buildings based on their best performing resource.

@@ -1031,6 +1031,7 @@ def parse_args() -> argparse.Namespace:
     # profit subcommand - default/main functionality
     profit_parser = subparsers.add_parser(
         "profit",
+        parents=[parent_parser],
         help="Calculate production profits",
         description="Calculate and display production profits for resources",
     )
@@ -1062,6 +1063,7 @@ def parse_args() -> argparse.Namespace:
     # roi subcommand
     roi_parser = subparsers.add_parser(
         "roi",
+        parents=[parent_parser],
         help="Building ROI analysis",
         description="Analyze return on investment for buildings",
     )
@@ -1093,6 +1095,7 @@ def parse_args() -> argparse.Namespace:
     # lifecycle subcommand
     lifecycle_parser = subparsers.add_parser(
         "lifecycle",
+        parents=[parent_parser],
         help="Abundance decay/lifecycle analysis",
         description="Calculate lifecycle ROI for abundance resources",
     )
@@ -1169,6 +1172,7 @@ def parse_args() -> argparse.Namespace:
     # compare subcommand
     compare_parser = subparsers.add_parser(
         "compare",
+        parents=[parent_parser],
         help="Compare market vs contract sales",
         description="Compare selling on the market vs selling via contracts with a custom contract price",
     )
