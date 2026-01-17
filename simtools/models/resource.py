@@ -4,6 +4,7 @@ from __future__ import annotations
 
 from dataclasses import dataclass, field
 from typing import TYPE_CHECKING
+import math
 
 if TYPE_CHECKING:
     from simtools.models.market import MarketData

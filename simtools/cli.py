@@ -1052,6 +1052,12 @@ def parse_args() -> argparse.Namespace:
         dest="building_level",
         help="Building level for production calculations (default: 1)",
     )
+    profit_parser.add_argument(
+        "--sales-speed-bonus",
+        type=float,
+        default=0.0,
+        help="Sales speed bonus percentage (default: 0.0)",
+    )
 
     # roi subcommand
     roi_parser = subparsers.add_parser(
@@ -1076,6 +1082,12 @@ def parse_args() -> argparse.Namespace:
         action="store_true",
         dest="step_roi",
         help="Calculate per-upgrade-step ROI",
+    )
+    roi_parser.add_argument(
+        "--sales-speed-bonus",
+        type=float,
+        default=0.0,
+        help="Sales speed bonus percentage (default: 0.0)",
     )
 
     # lifecycle subcommand
@@ -1102,6 +1114,12 @@ def parse_args() -> argparse.Namespace:
         default=0.0,
         dest="build_time",
         help="Base build time in hours",
+    )
+    lifecycle_parser.add_argument(
+        "--sales-speed-bonus",
+        type=float,
+        default=0.0,
+        help="Sales speed bonus percentage (default: 0.0)",
     )
 
     # prospect subcommand

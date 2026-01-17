@@ -21,6 +21,7 @@ class ProfitConfig:
     admin_overhead: float = 0.0
     is_contract: bool = False
     has_robots: bool = False
+    sales_speed_bonus: float = 0.0
 
 
 def find_best_resource_profit(
@@ -120,6 +121,7 @@ def calculate_all_profits(
 
     Returns:
         List of profit dictionaries sorted by profit_per_hour descending.
+        Includes both market sales and retail sales where applicable.
     """
     profits = []
 
@@ -190,6 +192,9 @@ def calculate_building_roi(
 ) -> list[dict]:
     """Calculate ROI for buildings based on their best performing resource.
 
+    For retail buildings, looks for retail profit entries (with "(Retail)" suffix).
+    For production buildings, uses standard market profit entries.
+
     Args:
         buildings: List of Building instances.
         profits: List of profit dictionaries from calculate_all_profits.
@@ -210,10 +215,15 @@ def calculate_building_roi(
         has_relevant_resource = False
 
         for res_name in building.produces:
-            res_name_lower = res_name.lower()
-            if res_name_lower in res_profit_map:
+            # For retail buildings, look for the retail version
+            if building.retail:
+                lookup_name = f"{res_name} (Retail)".lower()
+            else:
+                lookup_name = res_name.lower()
+            
+            if lookup_name in res_profit_map:
                 has_relevant_resource = True
-                p_data = res_profit_map[res_name_lower]
+                p_data = res_profit_map[lookup_name]
                 if p_data["profit_per_hour"] > best_profit:
                     best_profit = p_data["profit_per_hour"]
                     best_name = p_data["name"]
@@ -813,6 +823,7 @@ def calculate_retail_units_per_hour(
         sales_speed_bonus: Sales speed bonus percentage (default: 0.0).
         acceleration_multiplier: Acceleration multiplier (default: 1.0).
         weather_multiplier: Weather multiplier (default: 1.0).
+        saturation: Market saturation (0-2, default: 0.0).
 
     Returns:
         Units sold per hour, or NaN if calculation is invalid.
