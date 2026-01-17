@@ -198,11 +198,11 @@ def display_profits_table(
         profit_style = "bold green" if p["profit_per_hour"] >= 0 else "bold red"
         
         # Scale values by building level
-        profit_hr = p['profit_per_hour'] * building_level
-        revenue_hr = p['revenue_per_hour'] * building_level
-        fee_hr = p['market_fee_per_hour'] * building_level
-        costs_hr = p['costs_per_hour'] * building_level
-        transport_hr = p['transport_costs_per_hour'] * building_level
+        profit_hr = p["profit_per_hour"] * building_level
+        revenue_hr = p["revenue_per_hour"] * building_level
+        fee_hr = p["market_fee_per_hour"] * building_level
+        costs_hr = p["costs_per_hour"] * building_level
+        transport_hr = p["transport_costs_per_hour"] * building_level
 
         table.add_row(
             f"{p['name']}{abundance_mark}",
