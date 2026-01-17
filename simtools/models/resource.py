@@ -10,7 +10,6 @@ if TYPE_CHECKING:
 
 # Import retail calculation function (avoid circular import by importing at function level)
 
-
 @dataclass
 class ResourceInput:
     """Represents an input material required for production."""
